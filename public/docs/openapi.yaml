@@ -1,0 +1,829 @@
+openapi: "3.0.3"
+info:
+  title: TeleMed Desa API
+  description: |
+    REST API untuk platform telemedicine TeleMed Desa.
+    Menghubungkan Puskesmas terpencil dengan dokter di rumah sakit kota.
+    
+    **Autentikasi:** Semua endpoint (kecuali login) membutuhkan session Supabase (httpOnly cookie).
+    **Rate Limit:** Endpoint login dibatasi 10 percobaan per 15 menit per IP.
+  version: "1.0.0"
+  contact:
+    name: TeleMed Desa
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://your-app.vercel.app
+    description: Production server
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Patients
+    description: Patient management (nurse & admin)
+  - name: Vitals
+    description: Vital sign recording and history
+  - name: Consultations
+    description: Telemedicine consultations and chat
+  - name: Messages
+    description: Real-time chat messages
+  - name: Notifications
+    description: In-app notification management
+  - name: Admin
+    description: Admin-only system management
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      description: Returns the authenticated user's profile from the profiles table.
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      full_name: { type: string }
+                      role: { type: string, enum: [admin, doctor, nurse] }
+                      puskesmas_id: { type: string, nullable: true }
+                      hospital_id: { type: string, nullable: true }
+                      is_active: { type: boolean }
+                  error: { type: "null" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /api/patients:
+    get:
+      tags: [Patients]
+      summary: List patients (paginated)
+      description: |
+        Role-filtered patient list.
+        - Nurse: only patients from their puskesmas
+        - Doctor: only patients assigned via consultation
+        - Admin: all non-deleted patients
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: search
+          in: query
+          description: Search by name or NIK
+          schema: { type: string }
+      responses:
+        "200":
+          description: Paginated patient list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Patients]
+      summary: Register new patient
+      description: Nurse only. Server sets puskesmas_id from nurse's profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [full_name, nik, date_of_birth, gender, address, medical_record_no]
+              properties:
+                full_name: { type: string, minLength: 2, maxLength: 200 }
+                nik: { type: string, pattern: "^[0-9]{16}$", description: "16 digit NIK" }
+                date_of_birth: { type: string, format: date }
+                gender: { type: string, enum: [male, female] }
+                address: { type: string, minLength: 5, maxLength: 500 }
+                medical_record_no: { type: string }
+      responses:
+        "201":
+          description: Patient created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Patient" }
+                  error: { type: "null" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: NIK or medical record number already exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /api/patients/{id}:
+    get:
+      tags: [Patients]
+      summary: Get patient detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Patient with latest vital sign
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Patient" }
+                  error: { type: "null" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Patients]
+      summary: Update patient
+      description: Nurse (own puskesmas) or admin only.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name: { type: string }
+                date_of_birth: { type: string, format: date }
+                gender: { type: string, enum: [male, female] }
+                address: { type: string }
+      responses:
+        "200": { description: Patient updated }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      tags: [Patients]
+      summary: Soft-delete patient
+      description: Admin only. Sets is_deleted = true. Returns 409 if patient has open consultations.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Patient soft-deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: Patient has open consultations
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /api/patients/{id}/vitals:
+    get:
+      tags: [Vitals]
+      summary: Get vital sign history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated vital sign history (newest first)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Vitals]
+      summary: Record vital signs
+      description: Nurse only. Server auto-evaluates values for flagging.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [temperature, heart_rate, spo2]
+              properties:
+                temperature: { type: number, minimum: 30, maximum: 45, description: "Celsius" }
+                heart_rate: { type: integer, minimum: 20, maximum: 250, description: "bpm" }
+                spo2: { type: integer, minimum: 0, maximum: 100, description: "percentage" }
+                systolic_bp: { type: integer, minimum: 40, maximum: 300, description: "mmHg, optional" }
+                diastolic_bp: { type: integer, minimum: 20, maximum: 200, description: "mmHg, optional" }
+      responses:
+        "201":
+          description: Vital signs recorded, flagged if abnormal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/VitalSign" }
+                  error: { type: "null" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/patients/{id}/vitals/{vitalId}:
+    get:
+      tags: [Vitals]
+      summary: Get single vital sign record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: vitalId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Vital sign record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/VitalSign" }
+                  error: { type: "null" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/patients/{id}/consultations:
+    post:
+      tags: [Consultations]
+      summary: Create consultation for patient
+      description: Nurse only. Notifies all active doctors.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vital_sign_id: { type: string, format: uuid, nullable: true }
+                initial_message: { type: string, maxLength: 2000 }
+      responses:
+        "201":
+          description: Consultation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Consultation" }
+                  error: { type: "null" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/consultations:
+    get:
+      tags: [Consultations]
+      summary: List consultations
+      description: |
+        Role-filtered consultation list.
+        - Nurse: own consultations
+        - Doctor: assigned consultations + all open
+        - Admin: all consultations
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, in_progress, closed] }
+      responses:
+        "200":
+          description: Paginated consultation list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/consultations/{id}:
+    get:
+      tags: [Consultations]
+      summary: Get consultation detail
+      description: Includes patient summary, linked vital signs, and first 50 messages.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Consultation with patient, vitals, and messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Consultation" }
+                  error: { type: "null" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Consultations]
+      summary: Update consultation
+      description: |
+        Doctor or admin only.
+        - Doctor can: claim (set doctor_id), set in_progress, set closed with notes
+        - Admin can: update any field
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                doctor_id: { type: string, format: uuid, description: "Set to claim consultation" }
+                status: { type: string, enum: [open, in_progress, closed] }
+                closing_notes: { type: string, maxLength: 5000 }
+                referral_needed: { type: boolean }
+                closed_at: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Consultation updated
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/consultations/{id}/messages:
+    get:
+      tags: [Messages]
+      summary: Get message history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          description: Paginated messages (ascending)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Messages]
+      summary: Send message
+      description: Consultation participants only. Returns 409 if consultation is closed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string, minLength: 1, maxLength: 5000 }
+      responses:
+        "201":
+          description: Message sent, delivered via Supabase Realtime
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Message" }
+                  error: { type: "null" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Not a participant
+        "409":
+          description: Consultation is closed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: Get current user's notifications
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: unread_only
+          in: query
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: Paginated notifications (newest first)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Notification marked as read
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/admin/stats:
+    get:
+      tags: [Admin]
+      summary: Get system-wide statistics
+      description: Admin only.
+      responses:
+        "200":
+          description: System statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      total_patients: { type: integer }
+                      total_nurses: { type: integer }
+                      total_doctors: { type: integer }
+                      open_consultations: { type: integer }
+                      in_progress_consultations: { type: integer }
+                      closed_consultations_today: { type: integer }
+                      total_puskesmas: { type: integer }
+                      total_hospitals: { type: integer }
+                  error: { type: "null" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/admin/users:
+    get:
+      tags: [Admin]
+      summary: List all user profiles
+      description: Admin only. Supports search by name and role filter.
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: role
+          in: query
+          schema: { type: string, enum: [admin, doctor, nurse] }
+      responses:
+        "200":
+          description: Paginated user list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin]
+      summary: Create new user
+      description: |
+        Admin only. Creates Supabase auth user AND profile atomically.
+        Uses service role for auth user creation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, full_name, role]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8, maxLength: 72 }
+                full_name: { type: string, minLength: 2, maxLength: 100 }
+                role: { type: string, enum: [admin, doctor, nurse] }
+                puskesmas_id: { type: string, format: uuid, description: "Required if role = nurse" }
+                hospital_id: { type: string, format: uuid, description: "Required if role = doctor" }
+      responses:
+        "201": { description: User created }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/admin/users/{id}:
+    patch:
+      tags: [Admin]
+      summary: Update user profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Profile updated }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      tags: [Admin]
+      summary: Deactivate user
+      description: Sets is_active = false. Does not delete auth user or profile.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: User deactivated }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/admin/puskesmas:
+    get:
+      tags: [Admin]
+      summary: List all puskesmas
+      responses:
+        "200":
+          description: All puskesmas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Puskesmas" }
+                  error: { type: "null" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Admin]
+      summary: Create puskesmas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, location]
+              properties:
+                name: { type: string }
+                location: { type: string }
+      responses:
+        "201": { description: Puskesmas created }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/admin/puskesmas/{id}:
+    patch:
+      tags: [Admin]
+      summary: Update puskesmas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Puskesmas updated }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      tags: [Admin]
+      summary: Delete puskesmas
+      description: Only if no active nurses assigned.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Puskesmas deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: Has active nurses assigned
+  /api/admin/hospitals:
+    get:
+      tags: [Admin]
+      summary: List all hospitals
+      responses:
+        "200":
+          description: All hospitals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Hospital" }
+                  error: { type: "null" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Admin]
+      summary: Create hospital
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, location]
+              properties:
+                name: { type: string }
+                location: { type: string }
+      responses:
+        "201": { description: Hospital created }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/admin/hospitals/{id}:
+    patch:
+      tags: [Admin]
+      summary: Update hospital
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Hospital updated }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      tags: [Admin]
+      summary: Delete hospital
+      description: Only if no active doctors assigned.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Hospital deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: Has active doctors assigned
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Supabase session JWT (provided via httpOnly cookie, not Authorization header)
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        data: { type: "null" }
+        error: { type: string }
+    PaginatedResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items: { type: array, items: {} }
+            total: { type: integer }
+            page: { type: integer }
+            limit: { type: integer }
+            totalPages: { type: integer }
+        error: { type: "null" }
+    Patient:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        full_name: { type: string }
+        nik: { type: string }
+        date_of_birth: { type: string, format: date }
+        gender: { type: string, enum: [male, female] }
+        address: { type: string }
+        medical_record_no: { type: string }
+        puskesmas_id: { type: string, format: uuid }
+        is_deleted: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    VitalSign:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        patient_id: { type: string, format: uuid }
+        temperature: { type: number }
+        heart_rate: { type: integer }
+        spo2: { type: integer }
+        systolic_bp: { type: integer, nullable: true }
+        diastolic_bp: { type: integer, nullable: true }
+        is_flagged: { type: boolean }
+        flag_reasons: { type: array, items: { type: string }, nullable: true }
+        recorded_at: { type: string, format: date-time }
+    Consultation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        patient_id: { type: string, format: uuid }
+        nurse_id: { type: string, format: uuid }
+        doctor_id: { type: string, format: uuid, nullable: true }
+        vital_sign_id: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [open, in_progress, closed] }
+        closing_notes: { type: string, nullable: true }
+        referral_needed: { type: boolean }
+        created_at: { type: string, format: date-time }
+        closed_at: { type: string, format: date-time, nullable: true }
+    Message:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        consultation_id: { type: string, format: uuid }
+        sender_id: { type: string, format: uuid }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        type: { type: string, enum: [new_consultation, new_message, consultation_claimed, consultation_closed] }
+        title: { type: string }
+        body: { type: string }
+        link: { type: string, nullable: true }
+        is_read: { type: boolean }
+        created_at: { type: string, format: date-time }
+    Puskesmas:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        location: { type: string }
+        created_at: { type: string, format: date-time }
+    Hospital:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        location: { type: string }
+        created_at: { type: string, format: date-time }
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Unauthorized:
+      description: Not authenticated
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Forbidden:
+      description: Not authorized for this action
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }

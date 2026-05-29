@@ -3,8 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { apiSuccess, apiError } from '@/lib/utils/api.utils'
 
 /**
- * PATCH /api/notifications/[id]/read
- * Mark a single notification as read. User can only mark their own.
+ * PATCH /api/notifications/[id]/read — Mark a notification as read.
  */
 export async function PATCH(
   _request: NextRequest,
@@ -17,7 +16,7 @@ export async function PATCH(
 
   const { data, error } = await supabase
     .from('notifications')
-    .update({ is_read: true })
+    .update({ is_read: true } as any)
     .eq('id', id)
     .eq('user_id', user.id)
     .select()

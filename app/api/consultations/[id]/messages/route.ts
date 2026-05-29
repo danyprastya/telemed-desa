@@ -5,8 +5,7 @@ import { createNotification } from '@/lib/utils/notifications.utils'
 import { createMessageSchema } from '@/lib/validations/message.schema'
 
 /**
- * GET /api/consultations/[id]/messages
- * Paginated message history, ascending order.
+ * GET /api/consultations/[id]/messages — Paginated message history.
  */
 export async function GET(
   request: NextRequest,
@@ -24,7 +23,7 @@ export async function GET(
 
   const { data, count, error } = await supabase
     .from('messages')
-    .select('*, sender:sender_id(id, full_name, role)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .eq('consultation_id', id)
     .order('created_at', { ascending: true })
     .range(offset, offset + limit - 1)
@@ -41,8 +40,7 @@ export async function GET(
 }
 
 /**
- * POST /api/consultations/[id]/messages
- * Send a message. Participants only. Consultation must not be closed.
+ * POST /api/consultations/[id]/messages — Send a message. Participants only.
  */
 export async function POST(
   request: NextRequest,
@@ -53,20 +51,13 @@ export async function POST(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active, full_name')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
 
   // Check consultation status and participant access
-  const { data: consultation } = await supabase
-    .from('consultations')
-    .select('nurse_id, doctor_id, status')
-    .eq('id', id)
-    .single()
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: consultation } = await supabase.from('consultations').select('*').eq('id', id).single() as { data: any; error: any }
   if (!consultation) return apiError('Konsultasi tidak ditemukan', 404)
   if (consultation.status === 'closed') {
     return apiError('Tidak dapat mengirim pesan ke konsultasi yang sudah ditutup', 409)
@@ -77,7 +68,7 @@ export async function POST(
 
   const body = await request.json()
   const parsed = createMessageSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
   const { data: message, error } = await supabase
     .from('messages')
@@ -85,8 +76,8 @@ export async function POST(
       consultation_id: id,
       sender_id: profile.id,
       content: parsed.data.content,
-    })
-    .select('*, sender:sender_id(id, full_name, role)')
+    } as any)
+    .select('*')
     .single()
 
   if (error) return apiError('Gagal mengirim pesan', 500)

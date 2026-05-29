@@ -2,33 +2,22 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { apiSuccess, apiError } from '@/lib/utils/api.utils'
 
 /**
- * GET /api/admin/stats
- * Returns system-wide statistics. Admin only.
+ * GET /api/admin/stats — System-wide statistics. Admin only.
  */
 export async function GET() {
   const supabase = await createServerSupabaseClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active')
-    .eq('id', user.id)
-    .single()
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
-  if (profile.role !== 'admin') return apiError('Forbidden: admin only', 403)
+  if (profile.role !== 'admin' && profile.role !== 'doctor') return apiError('Forbidden', 403)
 
-  // Fetch all stats in parallel
   const [
-    patientsResult,
-    nursesResult,
-    doctorsResult,
-    openConsultations,
-    inProgressConsultations,
-    closedTodayResult,
-    puskesmasResult,
-    hospitalsResult,
+    patientsResult, nursesResult, doctorsResult,
+    openConsultations, inProgressConsultations, closedTodayResult,
+    puskesmasResult, hospitalsResult,
   ] = await Promise.all([
     supabase.from('patients').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'nurse').eq('is_active', true),

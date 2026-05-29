@@ -5,19 +5,15 @@ import { logAudit } from '@/lib/utils/audit.utils'
 import { createPatientSchema } from '@/lib/validations/patient.schema'
 
 /**
- * GET /api/patients
- * Paginated patient list. Role-filtered by RLS.
+ * GET /api/patients — Paginated patient list. Role-filtered by RLS.
  */
 export async function GET(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active, puskesmas_id')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
 
   const url = new URL(request.url)
@@ -28,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('patients')
-    .select('*, puskesmas:puskesmas_id(name)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .eq('is_deleted', false)
 
   if (search) {
@@ -51,27 +47,22 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/patients
- * Create a new patient. Nurse only.
- * Server sets puskesmas_id from the nurse's profile.
+ * POST /api/patients — Create a new patient. Nurse only.
  */
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active, puskesmas_id')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'nurse') return apiError('Forbidden: nurses only', 403)
   if (!profile.puskesmas_id) return apiError('Perawat belum ditugaskan ke puskesmas', 400)
 
   const body = await request.json()
   const parsed = createPatientSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
   const { data, error } = await supabase
     .from('patients')
@@ -79,12 +70,12 @@ export async function POST(request: NextRequest) {
       ...parsed.data,
       puskesmas_id: profile.puskesmas_id,
       created_by: profile.id,
-    })
+    } as any)
     .select()
     .single()
 
   if (error) {
-    if (error.message.includes('unique') || error.code === '23505') {
+    if (error.message?.includes('unique') || error.code === '23505') {
       return apiError('NIK atau nomor rekam medis sudah terdaftar', 409)
     }
     return apiError('Gagal mendaftarkan pasien', 500)
@@ -94,7 +85,7 @@ export async function POST(request: NextRequest) {
     userId: profile.id,
     action: 'CREATE_PATIENT',
     targetTable: 'patients',
-    targetId: data.id,
+    targetId: (data as any).id,
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
   })
 

@@ -35,21 +35,18 @@ export async function POST(request: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'admin') return apiError('Forbidden: admin only', 403)
 
   const body = await request.json()
   const parsed = hospitalSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
   const { data, error } = await supabase
     .from('hospitals')
-    .insert(parsed.data)
+    .insert(parsed.data as any)
     .select()
     .single()
 

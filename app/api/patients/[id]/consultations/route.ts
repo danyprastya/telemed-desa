@@ -6,9 +6,7 @@ import { createNotification, createBulkNotifications } from '@/lib/utils/notific
 import { createConsultationSchema } from '@/lib/validations/consultation.schema'
 
 /**
- * POST /api/patients/[id]/consultations
- * Create a consultation for a patient. Nurse only.
- * Notifies all active doctors.
+ * POST /api/patients/[id]/consultations — Create consultation. Nurse only.
  */
 export async function POST(
   request: NextRequest,
@@ -19,24 +17,18 @@ export async function POST(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active, full_name')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'nurse') return apiError('Forbidden: nurses only', 403)
 
   const body = await request.json()
   const parsed = createConsultationSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
-  // Get patient name for notification
-  const { data: patient } = await supabase
-    .from('patients')
-    .select('full_name')
-    .eq('id', patientId)
-    .single()
+  // Get patient name
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: patient } = await supabase.from('patients').select('full_name').eq('id', patientId).single() as { data: any; error: any }
 
   const { data: consultation, error } = await supabase
     .from('consultations')
@@ -44,19 +36,19 @@ export async function POST(
       patient_id: patientId,
       nurse_id: profile.id,
       vital_sign_id: parsed.data.vital_sign_id ?? null,
-    })
+    } as any)
     .select()
     .single()
 
   if (error) return apiError('Gagal membuat konsultasi', 500)
 
-  // If initial message provided, insert it
+  // Insert initial message if provided
   if (parsed.data.initial_message) {
     await supabase.from('messages').insert({
-      consultation_id: consultation.id,
+      consultation_id: (consultation as any).id,
       sender_id: profile.id,
       content: parsed.data.initial_message,
-    })
+    } as any)
   }
 
   // Notify all active doctors
@@ -68,12 +60,12 @@ export async function POST(
 
   if (doctors && doctors.length > 0) {
     await createBulkNotifications(
-      doctors.map((d) => d.id),
+      doctors.map((d: any) => d.id),
       {
         type: 'new_consultation',
         title: 'Konsultasi Baru',
         body: `${profile.full_name} meminta konsultasi untuk pasien ${patient?.full_name ?? 'Unknown'}`,
-        link: `/doctor/consultations/${consultation.id}`,
+        link: `/doctor/consultations/${(consultation as any).id}`,
       }
     )
   }
@@ -82,7 +74,7 @@ export async function POST(
     userId: profile.id,
     action: 'CREATE_CONSULTATION',
     targetTable: 'consultations',
-    targetId: consultation.id,
+    targetId: (consultation as any).id,
     details: { patient_id: patientId },
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
   })

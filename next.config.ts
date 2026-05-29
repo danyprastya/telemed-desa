@@ -8,10 +8,10 @@ const withPWA = require('next-pwa')({
 })
 
 const nextConfig: NextConfig = {
-  // Allow Supabase domain for any future image loading
   images: {
     remotePatterns: [],
   },
+  turbopack: {},
 }
 
 module.exports = withPWA(nextConfig)

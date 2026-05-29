@@ -6,8 +6,7 @@ import { createVitalSignSchema } from '@/lib/validations/vitals.schema'
 import { evaluateVitalSigns } from '@/lib/utils/vitals.utils'
 
 /**
- * GET /api/patients/[id]/vitals
- * Paginated vital sign history, newest first.
+ * GET /api/patients/[id]/vitals — Paginated vital sign history.
  */
 export async function GET(
   request: NextRequest,
@@ -25,7 +24,7 @@ export async function GET(
 
   const { data, count, error } = await supabase
     .from('vital_signs')
-    .select('*, recorder:recorded_by(full_name)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .eq('patient_id', id)
     .order('recorded_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -42,8 +41,7 @@ export async function GET(
 }
 
 /**
- * POST /api/patients/[id]/vitals
- * Record new vital signs. Nurse only. Auto-flags based on clinical ranges.
+ * POST /api/patients/[id]/vitals — Record new vital signs. Nurse only.
  */
 export async function POST(
   request: NextRequest,
@@ -54,19 +52,15 @@ export async function POST(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'nurse') return apiError('Forbidden: nurses only', 403)
 
   const body = await request.json()
   const parsed = createVitalSignSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
-  // Evaluate vital signs for auto-flagging
   const { is_flagged, flag_reasons } = evaluateVitalSigns({
     temperature: parsed.data.temperature,
     heart_rate: parsed.data.heart_rate,
@@ -86,7 +80,7 @@ export async function POST(
       is_flagged,
       flag_reasons,
       recorded_by: profile.id,
-    })
+    } as any)
     .select()
     .single()
 
@@ -96,7 +90,7 @@ export async function POST(
     userId: profile.id,
     action: 'CREATE_VITAL_SIGN',
     targetTable: 'vital_signs',
-    targetId: data.id,
+    targetId: (data as any).id,
     details: { patient_id: id, is_flagged },
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
   })

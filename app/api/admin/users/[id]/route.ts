@@ -5,8 +5,7 @@ import { logAudit } from '@/lib/utils/audit.utils'
 import { updateUserSchema } from '@/lib/validations/user.schema'
 
 /**
- * PATCH /api/admin/users/[id]
- * Update a user's profile. Admin only.
+ * PATCH /api/admin/users/[id] — Update a user's profile. Admin only.
  */
 export async function PATCH(
   request: NextRequest,
@@ -17,21 +16,18 @@ export async function PATCH(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'admin') return apiError('Forbidden: admin only', 403)
 
   const body = await request.json()
   const parsed = updateUserSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
   const { data, error } = await supabase
     .from('profiles')
-    .update(parsed.data)
+    .update(parsed.data as any)
     .eq('id', id)
     .select()
     .single()
@@ -51,8 +47,7 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/admin/users/[id]
- * Deactivates the user (sets is_active = false). Admin only.
+ * DELETE /api/admin/users/[id] — Deactivates the user. Admin only.
  */
 export async function DELETE(
   request: NextRequest,
@@ -63,20 +58,15 @@ export async function DELETE(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'admin') return apiError('Forbidden: admin only', 403)
-
-  // Cannot deactivate yourself
   if (id === profile.id) return apiError('Tidak dapat menonaktifkan akun sendiri', 409)
 
   const { data, error } = await supabase
     .from('profiles')
-    .update({ is_active: false })
+    .update({ is_active: false } as any)
     .eq('id', id)
     .select()
     .single()

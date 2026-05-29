@@ -3,19 +3,15 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { apiSuccess, apiError } from '@/lib/utils/api.utils'
 
 /**
- * GET /api/consultations
- * List consultations filtered by role. Paginated.
+ * GET /api/consultations — List consultations filtered by role. Paginated.
  */
 export async function GET(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
 
   const url = new URL(request.url)
@@ -26,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('consultations')
-    .select('*, patient:patient_id(full_name, nik), nurse:nurse_id(full_name), doctor:doctor_id(full_name)', { count: 'exact' })
+    .select('*', { count: 'exact' })
 
   if (status) query = query.eq('status', status)
 

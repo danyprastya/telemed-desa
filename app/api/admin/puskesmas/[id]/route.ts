@@ -9,8 +9,7 @@ const updateSchema = z.object({
 })
 
 /**
- * PATCH /api/admin/puskesmas/[id]
- * Update a Puskesmas. Admin only.
+ * PATCH /api/admin/puskesmas/[id] — Update a Puskesmas. Admin only.
  */
 export async function PATCH(
   request: NextRequest,
@@ -21,21 +20,18 @@ export async function PATCH(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'admin') return apiError('Forbidden: admin only', 403)
 
   const body = await request.json()
   const parsed = updateSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
   const { data, error } = await supabase
     .from('puskesmas')
-    .update(parsed.data)
+    .update(parsed.data as any)
     .eq('id', id)
     .select()
     .single()
@@ -45,8 +41,7 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/admin/puskesmas/[id]
- * Delete a Puskesmas. Only if no assigned nurses.
+ * DELETE /api/admin/puskesmas/[id] — Only if no assigned nurses.
  */
 export async function DELETE(
   _request: NextRequest,
@@ -57,15 +52,11 @@ export async function DELETE(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'admin') return apiError('Forbidden: admin only', 403)
 
-  // Check for assigned nurses
   const { count } = await supabase
     .from('profiles')
     .select('id', { count: 'exact', head: true })
@@ -78,6 +69,5 @@ export async function DELETE(
 
   const { error } = await supabase.from('puskesmas').delete().eq('id', id)
   if (error) return apiError('Gagal menghapus puskesmas', 500)
-
   return apiSuccess({ deleted: true })
 }

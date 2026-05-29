@@ -5,19 +5,15 @@ import { logAudit } from '@/lib/utils/audit.utils'
 import { createUserSchema } from '@/lib/validations/user.schema'
 
 /**
- * GET /api/admin/users
- * Paginated list of all user profiles. Admin only.
+ * GET /api/admin/users — Paginated list of all user profiles. Admin only.
  */
 export async function GET(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'admin') return apiError('Forbidden: admin only', 403)
 
@@ -30,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('profiles')
-    .select('*, puskesmas:puskesmas_id(name), hospital:hospital_id(name)', { count: 'exact' })
+    .select('*', { count: 'exact' })
 
   if (role) query = query.eq('role', role)
   if (search) query = query.ilike('full_name', `%${search}%`)
@@ -51,30 +47,24 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/admin/users
- * Create a new auth user AND their profile atomically.
- * Admin only. Uses service role client.
+ * POST /api/admin/users — Create new auth user + profile. Admin only.
  */
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'admin') return apiError('Forbidden: admin only', 403)
 
   const body = await request.json()
   const parsed = createUserSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
   const adminClient = createAdminSupabaseClient()
 
-  // Step 1: Create auth user
   const { data: authData, error: createAuthError } = await adminClient.auth.admin.createUser({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -88,7 +78,6 @@ export async function POST(request: NextRequest) {
     return apiError('Gagal membuat akun: ' + createAuthError.message, 500)
   }
 
-  // Step 2: Create profile
   const { data: newProfile, error: profileError } = await adminClient
     .from('profiles')
     .insert({
@@ -97,12 +86,11 @@ export async function POST(request: NextRequest) {
       role: parsed.data.role,
       puskesmas_id: parsed.data.role === 'nurse' ? parsed.data.puskesmas_id : null,
       hospital_id: parsed.data.role === 'doctor' ? parsed.data.hospital_id : null,
-    })
+    } as any)
     .select()
     .single()
 
   if (profileError) {
-    // Rollback: delete the auth user we just created
     await adminClient.auth.admin.deleteUser(authData.user.id)
     return apiError('Gagal membuat profil pengguna', 500)
   }
@@ -111,7 +99,7 @@ export async function POST(request: NextRequest) {
     userId: profile.id,
     action: 'CREATE_USER',
     targetTable: 'profiles',
-    targetId: newProfile.id,
+    targetId: (newProfile as any).id,
     details: { email: parsed.data.email, role: parsed.data.role },
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
   })

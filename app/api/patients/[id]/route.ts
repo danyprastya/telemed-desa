@@ -5,8 +5,7 @@ import { logAudit } from '@/lib/utils/audit.utils'
 import { updatePatientSchema } from '@/lib/validations/patient.schema'
 
 /**
- * GET /api/patients/[id]
- * Patient detail with latest vital sign.
+ * GET /api/patients/[id] — Patient detail with latest vital.
  */
 export async function GET(
   _request: NextRequest,
@@ -17,16 +16,16 @@ export async function GET(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: patient, error } = await supabase
     .from('patients')
-    .select('*, puskesmas:puskesmas_id(name, location)')
+    .select('*')
     .eq('id', id)
     .eq('is_deleted', false)
-    .single()
+    .single() as { data: any; error: any }
 
   if (error || !patient) return apiError('Pasien tidak ditemukan', 404)
 
-  // Fetch latest vital sign
   const { data: latestVital } = await supabase
     .from('vital_signs')
     .select('*')
@@ -39,8 +38,7 @@ export async function GET(
 }
 
 /**
- * PUT /api/patients/[id]
- * Update patient info. Nurse (own puskesmas) or admin.
+ * PUT /api/patients/[id] — Update patient info. Nurse or admin.
  */
 export async function PUT(
   request: NextRequest,
@@ -51,21 +49,18 @@ export async function PUT(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active) return apiError('Forbidden', 403)
   if (profile.role !== 'nurse' && profile.role !== 'admin') return apiError('Forbidden', 403)
 
   const body = await request.json()
   const parsed = updatePatientSchema.safeParse(body)
-  if (!parsed.success) return apiError(parsed.error.errors[0].message, 400)
+  if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
   const { data, error } = await supabase
     .from('patients')
-    .update(parsed.data)
+    .update(parsed.data as any)
     .eq('id', id)
     .select()
     .single()
@@ -85,8 +80,7 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/patients/[id]
- * Soft delete (sets is_deleted = true). Admin only.
+ * DELETE /api/patients/[id] — Soft delete. Admin only.
  */
 export async function DELETE(
   request: NextRequest,
@@ -97,14 +91,10 @@ export async function DELETE(
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return apiError('Unauthorized', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role, is_active')
-    .eq('id', user.id)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single() as { data: any; error: any }
   if (!profile || !profile.is_active || profile.role !== 'admin') return apiError('Forbidden', 403)
 
-  // Check for open consultations
   const { count } = await supabase
     .from('consultations')
     .select('id', { count: 'exact', head: true })
@@ -117,7 +107,7 @@ export async function DELETE(
 
   const { data, error } = await supabase
     .from('patients')
-    .update({ is_deleted: true })
+    .update({ is_deleted: true } as any)
     .eq('id', id)
     .select()
     .single()
