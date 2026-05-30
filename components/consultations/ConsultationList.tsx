@@ -37,11 +37,11 @@ export function ConsultationList({ cardHref, enableRealtime = false }: Consultat
   } = useConsultations(10)
 
   // Enable real-time updates when requested
-  const { consultations: realtimeCons } = useRealtimeConsultations(
-    { status: statusFilter || undefined, enabled: enableRealtime }
+  useRealtimeConsultations(
+    { status: statusFilter || undefined, enabled: enableRealtime, onUpdate: refresh }
   )
 
-  const displayedCons = enableRealtime && realtimeCons.length > 0 ? realtimeCons : consultations
+  const displayedCons = consultations
 
   useEffect(() => {
     refresh()

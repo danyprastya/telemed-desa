@@ -6,7 +6,7 @@ import { z } from 'zod'
  */
 export const createPatientSchema = z.object({
   full_name: z.string().min(2, 'Nama lengkap minimal 2 karakter').max(100, 'Nama terlalu panjang'),
-  nik: z.string().length(16, 'NIK harus 16 digit').regex(/^\d+$/, 'NIK harus berupa angka'),
+  nik: z.string().optional(),
   date_of_birth: z.string().refine((val) => !isNaN(Date.parse(val)), 'Tanggal lahir tidak valid'),
   gender: z.enum(['male', 'female']),
   address: z.string().min(5, 'Alamat minimal 5 karakter').max(500, 'Alamat terlalu panjang'),

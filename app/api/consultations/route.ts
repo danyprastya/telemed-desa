@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('consultations')
-    .select('*', { count: 'exact' })
+    .select('*, patient:patients(full_name, medical_record_no), nurse:profiles!consultations_nurse_id_fkey(full_name)', { count: 'exact' })
 
   if (status) query = query.eq('status', status)
 

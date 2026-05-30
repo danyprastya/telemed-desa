@@ -112,7 +112,7 @@ export default function DoctorConsultationDetailPage({ params }: { params: Promi
     <RoleGuard allowedRoles={['doctor']}>
       <PageHeader
         title={patient?.full_name ?? 'Detail Konsultasi'}
-        description={`NIK: ${patient?.nik ?? '-'} • Puskesmas: ${patient?.puskesmas?.name ?? '-'} • Status: ${consultation.status}`}
+        description={`RM: ${patient?.medical_record_no ?? '-'} • Puskesmas: ${patient?.puskesmas?.name ?? '-'} • Status: ${consultation.status}`}
       />
 
       <Tabs defaultValue="chat" className="space-y-4">
@@ -138,7 +138,6 @@ export default function DoctorConsultationDetailPage({ params }: { params: Promi
                 <CardContent className="space-y-3">
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <span className="text-text-secondary">Nama</span><span className="font-medium">{patient.full_name}</span>
-                    <span className="text-text-secondary">NIK</span><span>{patient.nik}</span>
                     <span className="text-text-secondary">No. RM</span><span>{patient.medical_record_no}</span>
                     <span className="text-text-secondary">Jenis Kelamin</span><span>{formatGender(patient.gender)}</span>
                     <span className="text-text-secondary">Tanggal Lahir</span><span>{formatDate(patient.date_of_birth)}</span>

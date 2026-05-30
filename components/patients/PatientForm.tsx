@@ -34,7 +34,6 @@ export function PatientForm({ onSuccess }: { onSuccess?: (patientId: string) => 
     resolver: zodResolver(createPatientSchema),
     defaultValues: {
       full_name: '',
-      nik: '',
       date_of_birth: '',
       gender: 'male',
       address: '',
@@ -84,11 +83,7 @@ export function PatientForm({ onSuccess }: { onSuccess?: (patientId: string) => 
               <Input id="full_name" {...register('full_name')} placeholder="Nama lengkap pasien" disabled={isSubmitting} />
               {errors.full_name && <p className="text-xs text-critical">{errors.full_name.message}</p>}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="nik">NIK</Label>
-              <Input id="nik" {...register('nik')} placeholder="16 digit NIK" maxLength={16} disabled={isSubmitting} />
-              {errors.nik && <p className="text-xs text-critical">{errors.nik.message}</p>}
-            </div>
+
             <div className="space-y-2">
               <Label htmlFor="medical_record_no">Nomor Rekam Medis</Label>
               <Input id="medical_record_no" {...register('medical_record_no')} placeholder="Nomor RM" disabled={isSubmitting} />

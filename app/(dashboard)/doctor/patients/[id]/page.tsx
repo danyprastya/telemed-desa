@@ -72,7 +72,7 @@ export default function DoctorPatientDetailPage({ params }: { params: Promise<{ 
 
   return (
     <RoleGuard allowedRoles={['doctor']}>
-      <PageHeader title={patient.full_name} description={`NIK: ${patient.nik} • RM: ${patient.medical_record_no}`} />
+      <PageHeader title={patient.full_name} description={`RM: ${patient.medical_record_no}`} />
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>

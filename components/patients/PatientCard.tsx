@@ -27,8 +27,8 @@ export function PatientCard({ patient, href }: PatientCardProps) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold text-text-primary truncate">{patient.full_name}</h3>
-              <p className="text-sm text-text-secondary mt-0.5">
-                NIK: {patient.nik} &middot; RM: {patient.medical_record_no}
+              <p className="text-xs text-text-secondary truncate mt-1">
+                RM: {patient.medical_record_no} &middot; {formatGender(patient.gender)}
               </p>
             </div>
             <Badge variant="outline" className="shrink-0 border-border-green text-text-secondary">

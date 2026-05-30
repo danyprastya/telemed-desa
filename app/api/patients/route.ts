@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     .eq('is_deleted', false)
 
   if (search) {
-    query = query.or(`full_name.ilike.%${search}%,nik.ilike.%${search}%`)
+    query = query.or(`full_name.ilike.%${search}%,medical_record_no.ilike.%${search}%`)
   }
 
   const { data, count, error } = await query
@@ -65,10 +65,16 @@ export async function POST(request: NextRequest) {
   const parsed = createPatientSchema.safeParse(body)
   if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
+  // Generate a random 16 digit NIK to satisfy database constraints without exposing real NIKs
+  const payload = { ...parsed.data }
+  if (!payload.nik) {
+    payload.nik = Math.floor(1000000000000000 + Math.random() * 9000000000000000).toString()
+  }
+
   const { data, error } = await supabase
     .from('patients')
     .insert({
-      ...parsed.data,
+      ...payload,
       puskesmas_id: profile.puskesmas_id,
       created_by: profile.id,
     })

@@ -7,6 +7,7 @@ import type { Consultation } from '@/types/app.types'
 interface RealtimeFilters {
   status?: string
   enabled?: boolean
+  onUpdate?: () => void
 }
 
 /**
@@ -37,11 +38,8 @@ export function useRealtimeConsultations(filters?: RealtimeFilters) {
           schema: 'public',
           table: 'consultations',
         },
-        (payload) => {
-          const newConsultation = payload.new as Consultation
-          if (!filters?.status || newConsultation.status === filters.status) {
-            setConsultations((prev) => [newConsultation, ...prev])
-          }
+        () => {
+          if (filters?.onUpdate) filters.onUpdate()
         }
       )
       .on(
@@ -51,12 +49,8 @@ export function useRealtimeConsultations(filters?: RealtimeFilters) {
           schema: 'public',
           table: 'consultations',
         },
-        (payload) => {
-          const updated = payload.new as Consultation
-          setConsultations((prev) =>
-            prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
-              .filter((c) => !filters?.status || c.status === filters.status)
-          )
+        () => {
+          if (filters?.onUpdate) filters.onUpdate()
         }
       )
       .subscribe((status) => {

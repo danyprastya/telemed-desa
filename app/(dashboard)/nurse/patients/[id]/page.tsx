@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Activity, MessageSquare, Plus, AlertTriangle, MapPin } from 'lucide-react'
+import { Activity, MessageSquare, Plus, AlertTriangle, MapPin, ArrowLeft } from 'lucide-react'
 import { formatDate, formatGender, calculateAge } from '@/lib/utils/format.utils'
 import { toast } from 'sonner'
 import type { Patient, VitalSign, Consultation } from '@/types/app.types'
@@ -87,7 +87,17 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <RoleGuard allowedRoles={['nurse']}>
-      <PageHeader title={patient.full_name} description={`NIK: ${patient.nik} • RM: ${patient.medical_record_no}`} />
+      <div className="mb-4">
+        <Button 
+          variant="ghost" 
+          className="pl-0 text-text-secondary hover:bg-transparent hover:text-text-primary" 
+          onClick={() => router.push('/nurse/patients')}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Kembali ke Daftar Pasien
+        </Button>
+      </div>
+      <PageHeader title={patient.full_name} description={`RM: ${patient.medical_record_no}`} />
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
