@@ -33,6 +33,7 @@ export async function POST(
     .insert({
       patient_id: patientId,
       nurse_id: profile.id,
+      doctor_id: parsed.data.doctor_id,
       vital_sign_id: parsed.data.vital_sign_id ?? null,
     })
     .select()
@@ -48,23 +49,14 @@ export async function POST(
     })
   }
 
-  const { data: doctors } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('role', 'doctor')
-    .eq('is_active', true)
-
-  if (doctors && doctors.length > 0) {
-    await createBulkNotifications(
-      doctors.map((d) => d.id),
-      {
-        type: 'new_consultation',
-        title: 'Konsultasi Baru',
-        body: `${profile.full_name} meminta konsultasi untuk pasien ${patient?.full_name ?? 'Unknown'}`,
-        link: `/doctor/consultations/${consultation.id}`,
-      }
-    )
-  }
+  // Notify only the assigned doctor
+  await createNotification({
+    userId: parsed.data.doctor_id,
+    type: 'new_consultation',
+    title: 'Konsultasi Baru',
+    body: `${profile.full_name} menugaskan konsultasi pasien ${patient?.full_name ?? 'Unknown'} kepada Anda`,
+    link: `/doctor/consultations/${consultation.id}`,
+  })
 
   await logAudit({
     userId: profile.id,

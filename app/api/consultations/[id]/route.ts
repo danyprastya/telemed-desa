@@ -37,7 +37,7 @@ export async function GET(
 
   const { data: messages } = await supabase
     .from('messages')
-    .select('*')
+    .select('*, sender:profiles!messages_sender_id_fkey(full_name)')
     .eq('consultation_id', id)
     .order('created_at', { ascending: true })
     .limit(50)
@@ -102,6 +102,12 @@ export async function PATCH(
   }
 
   if (parsed.data.status === 'closed') {
+    await supabase.from('messages').insert({
+      consultation_id: id,
+      sender_id: profile.id,
+      content: `[SISTEM] Konsultasi telah ditutup.\n\nCatatan Dokter:\n${parsed.data.closing_notes}`,
+    })
+
     await createNotification({
       userId: current.nurse_id,
       type: 'consultation_closed',

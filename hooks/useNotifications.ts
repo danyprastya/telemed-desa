@@ -74,7 +74,7 @@ export function useNotifications() {
       .subscribe()
 
     return () => {
-      channel.unsubscribe()
+      supabase.removeChannel(channel)
     }
   }, [user, supabase])
 

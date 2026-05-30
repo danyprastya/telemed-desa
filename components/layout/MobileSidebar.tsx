@@ -42,6 +42,7 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
   nurse: [
     { label: 'Dashboard', href: '/nurse', icon: LayoutDashboard },
     { label: 'Pasien', href: '/nurse/patients', icon: UserRound },
+    { label: 'Konsultasi', href: '/nurse/consultations', icon: MessageSquare },
   ],
   doctor: [
     { label: 'Dashboard', href: '/doctor', icon: LayoutDashboard },

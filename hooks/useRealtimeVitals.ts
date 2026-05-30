@@ -52,7 +52,7 @@ export function useRealtimeVitals(patientId: string, initialVitals: VitalSign[])
       })
 
     return () => {
-      channel.unsubscribe()
+      supabase.removeChannel(channel)
     }
   }, [patientId, supabase])
 

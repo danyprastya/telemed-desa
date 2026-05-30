@@ -14,14 +14,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatGender, calculateAge } from '@/lib/utils/format.utils'
 import { Activity, MessageSquare, User, AlertTriangle, MapPin, ArrowLeft } from 'lucide-react'
-import { toast } from 'sonner'
 import type { Consultation, Message, VitalSign, Patient } from '@/types/app.types'
 
 /**
- * Doctor consultation detail page with chat, patient summary, and live vitals.
- * Auto-claims the consultation when opened if no doctor is assigned.
+ * Nurse consultation detail page with chat, patient summary, and live vitals.
  */
-export default function DoctorConsultationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function NurseConsultationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const { profile } = useAuth()
@@ -52,11 +50,6 @@ export default function DoctorConsultationDetailPage({ params }: { params: Promi
           const vData = await vRes.json()
           if (vData.data?.items) setVitals(vData.data.items)
         }
-
-        // Auto-claim: if no doctor assigned and consultation is open, claim it
-        if (!con.doctor_id && con.status === 'open' && profile?.role === 'doctor') {
-          await claimConsultation(con.id)
-        }
       } catch {
         setError('Gagal memuat data konsultasi')
       } finally {
@@ -66,43 +59,20 @@ export default function DoctorConsultationDetailPage({ params }: { params: Promi
     if (profile) fetchData()
   }, [id, profile])
 
-  /**
-   * Auto-claims an open consultation by assigning the current doctor.
-   * Prevents two doctors from claiming the same consultation.
-   */
-  const claimConsultation = async (consultationId: string) => {
-    try {
-      const res = await fetch(`/api/consultations/${consultationId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          doctor_id: profile?.id,
-          status: 'in_progress',
-        }),
-      })
-      const result = await res.json()
-      if (result.data) {
-        setConsultation((prev) => prev ? { ...prev, doctor_id: profile?.id ?? null, status: 'in_progress' } : null)
-      }
-    } catch {
-      toast.error('Gagal mengklaim konsultasi')
-    }
-  }
-
   const handleConsultationUpdated = async () => {
     const res = await fetch(`/api/consultations/${id}`)
     const result = await res.json()
     if (result.data) setConsultation(result.data)
   }
 
-  if (isLoading) return <RoleGuard allowedRoles={['doctor']}><LoadingSpinner /></RoleGuard>
+  if (isLoading) return <RoleGuard allowedRoles={['nurse']}><LoadingSpinner /></RoleGuard>
 
   if (error || !consultation) {
     return (
-      <RoleGuard allowedRoles={['doctor']}>
+      <RoleGuard allowedRoles={['nurse']}>
         <div className="text-center py-12">
           <p className="text-critical mb-4">{error ?? 'Konsultasi tidak ditemukan'}</p>
-          <Button variant="outline" onClick={() => window.location.href = '/doctor/consultations'}>
+          <Button variant="outline" onClick={() => router.push('/nurse/consultations')}>
             Kembali
           </Button>
         </div>
@@ -111,12 +81,12 @@ export default function DoctorConsultationDetailPage({ params }: { params: Promi
   }
 
   return (
-    <RoleGuard allowedRoles={['doctor']}>
+    <RoleGuard allowedRoles={['nurse']}>
       <div className="mb-4">
         <Button 
           variant="ghost" 
           className="pl-0 text-text-secondary hover:bg-transparent hover:text-text-primary" 
-          onClick={() => router.push('/doctor/consultations')}
+          onClick={() => router.push('/nurse/consultations')}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Kembali ke Daftar Konsultasi

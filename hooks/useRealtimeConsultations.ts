@@ -58,7 +58,7 @@ export function useRealtimeConsultations(filters?: RealtimeFilters) {
       })
 
     return () => {
-      channel.unsubscribe()
+      supabase.removeChannel(channel)
     }
   }, [supabase, filters?.status, filters?.enabled])
 

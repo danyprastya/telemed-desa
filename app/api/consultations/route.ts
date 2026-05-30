@@ -25,6 +25,12 @@ export async function GET(request: NextRequest) {
     .from('consultations')
     .select('*, patient:patients(full_name, medical_record_no), nurse:profiles!consultations_nurse_id_fkey(full_name)', { count: 'exact' })
 
+  if (profile.role === 'doctor') {
+    query = query.eq('doctor_id', profile.id)
+  } else if (profile.role === 'nurse') {
+    query = query.eq('nurse_id', profile.id)
+  }
+
   if (status) query = query.eq('status', status)
 
   const { data, count, error } = await query

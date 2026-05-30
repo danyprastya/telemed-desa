@@ -5,6 +5,7 @@ import { z } from 'zod'
  * vital_sign_id is optional — links to a specific vital reading.
  */
 export const createConsultationSchema = z.object({
+  doctor_id: z.string().uuid('Pilih dokter yang dituju'),
   vital_sign_id: z.string().uuid('ID tanda vital tidak valid').optional().nullable(),
   initial_message: z.string().max(2000, 'Pesan terlalu panjang').optional(),
 })

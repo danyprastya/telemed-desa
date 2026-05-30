@@ -34,13 +34,23 @@ export function useRealtimeMessages(consultationId: string, initialMessages: Mes
           table: 'messages',
           filter: `consultation_id=eq.${consultationId}`,
         },
-        (payload) => {
-          const newMessage = payload.new as Message
-          setMessages((prev) => {
-            // Avoid duplicates
-            if (prev.some((m) => m.id === newMessage.id)) return prev
-            return [...prev, newMessage]
-          })
+        async (payload) => {
+          const rawMessage = payload.new as Message
+          
+          // Fetch the full message including the joined sender profile
+          const { data: fullMessage } = await supabase
+            .from('messages')
+            .select('*, sender:profiles!messages_sender_id_fkey(full_name)')
+            .eq('id', rawMessage.id)
+            .single()
+
+          if (fullMessage) {
+            setMessages((prev) => {
+              // Avoid duplicates
+              if (prev.some((m) => m.id === fullMessage.id)) return prev
+              return [...prev, fullMessage as Message]
+            })
+          }
         }
       )
       .subscribe((status) => {
@@ -48,7 +58,7 @@ export function useRealtimeMessages(consultationId: string, initialMessages: Mes
       })
 
     return () => {
-      channel.unsubscribe()
+      supabase.removeChannel(channel)
     }
   }, [consultationId, supabase])
 

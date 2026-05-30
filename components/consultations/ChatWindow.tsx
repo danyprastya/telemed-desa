@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Send, Lock, Wifi, WifiOff } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import type { Message, Consultation } from '@/types/app.types'
 
@@ -34,6 +35,31 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
   const [isSending, setIsSending] = useState(false)
   const [showCloseDialog, setShowCloseDialog] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const supabase = createClient()
+
+  // Listen for consultation updates (like status changes)
+  useEffect(() => {
+    const channel = supabase
+      .channel(`consultation_update:${consultation.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'consultations',
+          filter: `id=eq.${consultation.id}`,
+        },
+        () => {
+          // Whenever the consultation is updated (e.g. status changed to closed), trigger the callback
+          onConsultationUpdated?.()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [consultation.id, onConsultationUpdated, supabase])
 
   const isClosed = consultation.status === 'closed'
   const isDoctor = profile?.role === 'doctor'
@@ -108,7 +134,7 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
       </div>
 
       {/* Messages area */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4 min-h-0" ref={scrollRef}>
         <div className="space-y-3">
           {messages.length === 0 ? (
             <p className="text-center text-sm text-text-muted py-12">
@@ -128,7 +154,7 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
 
       {/* Input area */}
       {!isClosed && (
-        <div className="flex items-center gap-2 px-4 py-3 border-t border-border-green bg-surface">
+        <div className="flex items-center gap-2 px-4 py-3 border-t border-border-green bg-surface shrink-0 mt-auto">
           <Input
             ref={inputRef}
             value={newMessage}
