@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
@@ -17,6 +17,12 @@ const geistMono = Geist_Mono({
  * Root metadata for the TeleMed Desa application.
  * Includes PWA manifest link and theme color.
  */
+export const viewport: Viewport = {
+  themeColor: '#16A34A',
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export const metadata: Metadata = {
   title: {
     default: 'TeleMed Desa — Sistem Telemedicine Puskesmas',
@@ -24,7 +30,6 @@ export const metadata: Metadata = {
   },
   description: 'Platform telemedicine untuk menghubungkan Puskesmas terpencil dengan dokter di rumah sakit kota. Konsultasi real-time, monitoring tanda vital, dan rujukan digital.',
   manifest: '/manifest.json',
-  themeColor: '#16A34A',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

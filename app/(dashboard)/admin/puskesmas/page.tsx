@@ -66,10 +66,8 @@ export default function PuskesmasPage() {
       <PageHeader title="Manajemen Puskesmas" description="Kelola data Puskesmas terpencil" />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger asChild>
-          <Button className="mb-4">
-            <Plus className="mr-2 h-4 w-4" /> Tambah Puskesmas
-          </Button>
+        <DialogTrigger render={<Button className="mb-4" />}>
+          <Plus className="mr-2 h-4 w-4" /> Tambah Puskesmas
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>

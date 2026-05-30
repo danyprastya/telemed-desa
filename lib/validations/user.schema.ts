@@ -8,7 +8,7 @@ export const createUserSchema = z.object({
   email: z.string().email('Email tidak valid'),
   password: z.string().min(8, 'Password minimal 8 karakter').max(72, 'Password terlalu panjang'),
   full_name: z.string().min(2, 'Nama minimal 2 karakter').max(100, 'Nama terlalu panjang'),
-  role: z.enum(['admin', 'doctor', 'nurse'], { required_error: 'Pilih role' }),
+  role: z.enum(['admin', 'doctor', 'nurse']),
   puskesmas_id: z.string().uuid('ID Puskesmas tidak valid').optional().nullable(),
   hospital_id: z.string().uuid('ID Rumah Sakit tidak valid').optional().nullable(),
 }).refine(

@@ -67,9 +67,9 @@ export function LoginForm() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, is_active')
+        .select('*')
         .eq('id', user.id)
-        .single()
+        .single() as { data: any; error: any }
 
       if (!profile) {
         setError('Profil pengguna tidak ditemukan.')

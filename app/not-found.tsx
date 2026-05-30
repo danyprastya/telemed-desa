@@ -17,8 +17,8 @@ export default function NotFound() {
       <p className="text-text-secondary mb-8 max-w-md">
         Halaman yang Anda cari tidak ada atau telah dipindahkan.
       </p>
-      <Button asChild>
-        <Link href="/login">Kembali ke Beranda</Link>
+      <Button render={<Link href="/login" />}>
+        Kembali ke Beranda
       </Button>
     </div>
   )

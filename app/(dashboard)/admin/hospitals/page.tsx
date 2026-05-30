@@ -65,8 +65,8 @@ export default function HospitalsPage() {
       <PageHeader title="Manajemen Rumah Sakit" description="Kelola data rumah sakit rujukan" />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger asChild>
-          <Button className="mb-4"><Plus className="mr-2 h-4 w-4" /> Tambah Rumah Sakit</Button>
+        <DialogTrigger render={<Button className="mb-4" />}>
+          <Plus className="mr-2 h-4 w-4" /> Tambah Rumah Sakit
         </DialogTrigger>
         <DialogContent>
           <DialogHeader><DialogTitle>Tambah Rumah Sakit Baru</DialogTitle></DialogHeader>

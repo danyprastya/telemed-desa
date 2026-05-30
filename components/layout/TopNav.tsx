@@ -33,13 +33,11 @@ export function TopNav() {
         <NotificationBell />
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-light text-primary text-sm font-semibold">
-                {profile?.full_name?.charAt(0) ?? '?'}
-              </div>
-              <span className="sr-only">Menu pengguna</span>
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="relative" />}>
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-light text-primary text-sm font-semibold">
+              {profile?.full_name?.charAt(0) ?? '?'}
+            </div>
+            <span className="sr-only">Menu pengguna</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>

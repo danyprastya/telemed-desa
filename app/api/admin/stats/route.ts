@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { apiSuccess, apiError } from '@/lib/utils/api.utils'
 

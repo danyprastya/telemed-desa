@@ -62,7 +62,7 @@ export async function middleware(request: NextRequest) {
 
   // Rate limit the login API endpoint
   if (pathname === '/api/auth/login' && request.method === 'POST') {
-    const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? 'unknown'
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
     if (!checkRateLimit(ip)) {
       return new NextResponse(
         JSON.stringify({ data: null, error: 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.' }),
