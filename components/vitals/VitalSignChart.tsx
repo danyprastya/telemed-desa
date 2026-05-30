@@ -45,21 +45,21 @@ export function VitalSignChart({
   normalHigh,
 }: VitalSignChartProps) {
   return (
-    <div className="p-4 rounded-xl border border-border-green bg-white">
+    <div className="p-4 rounded-xl border border-border-green bg-card">
       <h4 className="text-sm font-semibold text-text-primary mb-3">{title} ({unit})</h4>
       <ResponsiveContainer width="100%" height={180}>
         <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-green)" />
           <XAxis
             dataKey="time"
-            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
             tickLine={false}
             axisLine={false}
             interval="preserveStartEnd"
           />
           <YAxis
             domain={['auto', 'auto']}
-            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
             tickLine={false}
             axisLine={false}
             width={35}
@@ -68,20 +68,22 @@ export function VitalSignChart({
             contentStyle={{
               fontSize: 12,
               borderRadius: 8,
-              border: '1px solid #D1FAE5',
+              backgroundColor: 'var(--card)',
+              borderColor: 'var(--border-green)',
+              color: 'var(--text-primary)'
             }}
             formatter={(value) => [`${value} ${unit}`, title]}
             labelFormatter={(label) => `Waktu: ${label}`}
           />
           <ReferenceLine
             y={normalLow}
-            stroke="#9CA3AF"
+            stroke="var(--text-muted)"
             strokeDasharray="4 4"
             strokeWidth={1}
           />
           <ReferenceLine
             y={normalHigh}
-            stroke="#9CA3AF"
+            stroke="var(--text-muted)"
             strokeDasharray="4 4"
             strokeWidth={1}
           />
@@ -105,7 +107,7 @@ export function VitalSignChart({
                 />
               )
             }}
-            activeDot={{ r: 6, fill: '#16A34A', stroke: '#fff', strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: '#16A34A', stroke: 'var(--background)', strokeWidth: 2 }}
           />
         </LineChart>
       </ResponsiveContainer>

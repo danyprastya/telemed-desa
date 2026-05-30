@@ -159,7 +159,7 @@ export function VitalSignMonitor({ patientId, initialVitals }: VitalSignMonitorP
       {/* Latest values summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {latestStatuses.map((s) => (
-          <div key={s.type} className="p-3 rounded-lg border border-border-green bg-white text-center">
+          <div key={s.type} className="p-3 rounded-lg border border-border-green bg-card text-center">
             <p className="text-xs text-text-secondary">{s.label}</p>
             <p className="text-lg font-bold text-text-primary">{s.value}</p>
             <VitalSignBadge status={s.status} className="mt-1" />

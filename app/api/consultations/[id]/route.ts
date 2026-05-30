@@ -90,7 +90,7 @@ export async function PATCH(
       type: 'consultation_claimed',
       title: 'Konsultasi Diambil',
       body: `Dr. ${profile.full_name} telah mengambil konsultasi Anda`,
-      link: `/nurse/patients`,
+      link: `/nurse/consultations/${id}`,
     })
     await logAudit({
       userId: profile.id,
@@ -113,7 +113,7 @@ export async function PATCH(
       type: 'consultation_closed',
       title: 'Konsultasi Selesai',
       body: `Dr. ${profile.full_name} telah menutup konsultasi`,
-      link: `/nurse/patients`,
+      link: `/nurse/consultations/${id}`,
     })
     await logAudit({
       userId: profile.id,

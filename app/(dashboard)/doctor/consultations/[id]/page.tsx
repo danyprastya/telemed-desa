@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { RoleGuard } from '@/components/layout/RoleGuard'
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { ChatWindow } from '@/components/consultations/ChatWindow'
 import { VitalSignMonitor } from '@/components/vitals/VitalSignMonitor'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatGender, calculateAge } from '@/lib/utils/format.utils'
 import { Activity, MessageSquare, User, AlertTriangle, MapPin, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
@@ -95,7 +95,7 @@ export default function DoctorConsultationDetailPage({ params }: { params: Promi
     if (result.data) setConsultation(result.data)
   }
 
-  if (isLoading) return <RoleGuard allowedRoles={['doctor']}><LoadingSpinner /></RoleGuard>
+  if (isLoading) return <RoleGuard allowedRoles={['doctor']}><DoctorConsultationSkeleton /></RoleGuard>
 
   if (error || !consultation) {
     return (
@@ -211,5 +211,41 @@ export default function DoctorConsultationDetailPage({ params }: { params: Promi
         </TabsContent>
       </Tabs>
     </RoleGuard>
+  )
+}
+
+function DoctorConsultationSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Back button skeleton */}
+      <Skeleton className="h-10 w-64 mb-4" />
+      
+      {/* Page Header skeleton */}
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-96" />
+      </div>
+
+      {/* Tabs list skeleton */}
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-10 w-32" />
+      </div>
+
+      {/* Main content skeleton (simulating chat/overview) */}
+      <div className="grid grid-cols-1 gap-4 pt-4">
+        <Card className="border-border-green h-[600px]">
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-20 w-3/4 rounded-lg" />
+            <Skeleton className="h-20 w-3/4 rounded-lg ml-auto" />
+            <Skeleton className="h-20 w-3/4 rounded-lg" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

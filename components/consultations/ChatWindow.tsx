@@ -7,9 +7,8 @@ import { MessageBubble } from '@/components/consultations/MessageBubble'
 import { CloseConsultationDialog } from '@/components/consultations/CloseConsultationDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Send, Lock, Wifi, WifiOff } from 'lucide-react'
+import { Loader2, Send, Lock, Wifi, WifiOff, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import type { Message, Consultation } from '@/types/app.types'
@@ -30,12 +29,16 @@ interface ChatWindowProps {
  */
 export function ChatWindow({ consultation, initialMessages, onConsultationUpdated }: ChatWindowProps) {
   const { profile } = useAuth()
-  const { messages, isConnected, scrollRef, typingUsers, sendTypingEvent } = useRealtimeMessages(consultation.id, initialMessages, profile)
+  const { messages, setMessages, isConnected, typingUsers, sendTypingEvent } = useRealtimeMessages(consultation, initialMessages, profile)
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [showCloseDialog, setShowCloseDialog] = useState(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const prevMessagesLength = useRef(initialMessages.length)
   const supabase = createClient()
 
   // Listen for consultation updates (like status changes)
@@ -80,6 +83,10 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
       if (result.error) {
         toast.error(result.error)
       } else {
+        setMessages((prev: Message[]) => {
+          if (prev.some((m) => m.id === result.data.id)) return prev
+          return [...prev, result.data]
+        })
         setNewMessage('')
         sendTypingEvent(false)
         if (typingTimeout) clearTimeout(typingTimeout)
@@ -117,8 +124,45 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
     }
   }, [typingTimeout])
 
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+    setShowScrollButton(false)
+    setUnreadCount(0)
+  }
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+    const isScrolledUp = scrollHeight - scrollTop - clientHeight > 100
+    setShowScrollButton(isScrolledUp)
+    if (!isScrolledUp) {
+      setUnreadCount(0)
+    }
+  }
+
+  // Auto-scroll logic
+  useEffect(() => {
+    if (!scrollRef.current) return
+    const latestMessage = messages[messages.length - 1]
+    const isOwn = latestMessage?.sender_id === profile?.id
+
+    if (messages.length > prevMessagesLength.current) {
+      const addedCount = messages.length - prevMessagesLength.current
+      // Auto-scroll if we are already near bottom, or if we just sent a message
+      if (!showScrollButton || isOwn) {
+        scrollToBottom()
+      } else {
+        setUnreadCount((prev) => prev + addedCount)
+      }
+    }
+    
+    prevMessagesLength.current = messages.length
+  }, [messages]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div className="flex flex-col h-[600px] rounded-xl border border-border-green bg-white overflow-hidden">
+    <div className="flex flex-col h-[600px] rounded-xl border border-border-green bg-card overflow-hidden">
       {/* Chat header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-green bg-surface">
         <div className="flex items-center gap-2">
@@ -132,14 +176,16 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
           )}
         </div>
         <div className="flex items-center gap-2">
-          {isConnected ? (
-            <Badge className="bg-success-light text-success gap-1 text-xs">
-              <Wifi className="h-3 w-3" /> Live
-            </Badge>
-          ) : (
-            <Badge className="bg-critical-light text-critical gap-1 text-xs">
-              <WifiOff className="h-3 w-3" />
-            </Badge>
+          {!isClosed && (
+            isConnected ? (
+              <Badge className="bg-success-light text-success gap-1 text-xs">
+                <Wifi className="h-3 w-3" /> Live
+              </Badge>
+            ) : (
+              <Badge className="bg-critical-light text-critical gap-1 text-xs">
+                <WifiOff className="h-3 w-3" /> Offline
+              </Badge>
+            )
           )}
           {isDoctor && !isClosed && (
             <Button
@@ -155,23 +201,46 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
       </div>
 
       {/* Messages area */}
-      <ScrollArea className="flex-1 p-4 min-h-0" ref={scrollRef}>
-        <div className="space-y-3">
-          {messages.length === 0 ? (
-            <p className="text-center text-sm text-text-muted py-12">
-              Belum ada pesan. Mulai percakapan.
-            </p>
-          ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isOwn={msg.sender_id === profile?.id}
-              />
-            ))
-          )}
+      <div className="relative flex-1 min-h-0">
+        <div 
+          className="h-full overflow-y-auto p-4 custom-scrollbar" 
+          ref={scrollRef}
+          onScroll={handleScroll}
+        >
+          <div className="space-y-3 pb-2">
+            {messages.length === 0 ? (
+              <p className="text-center text-sm text-text-muted py-12">
+                Belum ada pesan. Mulai percakapan.
+              </p>
+            ) : (
+              messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isOwn={msg.sender_id === profile?.id}
+                />
+              ))
+            )}
+          </div>
         </div>
-      </ScrollArea>
+
+        {/* Jump to bottom button */}
+        {showScrollButton && (
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={scrollToBottom}
+            className="absolute bottom-4 right-4 rounded-full shadow-md z-10 bg-surface/90 hover:bg-surface border border-border-green text-primary w-10 h-10"
+          >
+            <ChevronDown className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-critical text-[10px] font-bold text-white shadow-sm">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Button>
+        )}
+      </div>
 
       {/* Typing indicator */}
       {typingUsers.size > 0 && !isClosed && (

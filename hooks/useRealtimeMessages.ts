@@ -2,21 +2,20 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Message, Profile } from '@/types/app.types'
+import type { Message, Profile, Consultation } from '@/types/app.types'
 
 /**
  * Hook for real-time chat messages via Supabase Realtime.
  * Subscribes to INSERT events on the messages table filtered by consultation_id.
- * @param consultationId - The consultation to subscribe to.
- * @param profile - The current user profile.
- * @returns { messages, isConnected, scrollRef, typingUsers, sendTypingEvent }
+ * @param consultation - The full consultation object.
+ * @returns { messages, setMessages, isConnected, typingUsers, sendTypingEvent }
  */
-export function useRealtimeMessages(consultationId: string, initialMessages: Message[], profile?: Profile | null) {
+export function useRealtimeMessages(consultation: Consultation, initialMessages: Message[], profile?: Profile | null) {
+  const consultationId = consultation.id
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [isConnected, setIsConnected] = useState(false)
   const [typingUsers, setTypingUsers] = useState<Map<string, {name: string, timestamp: number}>>(new Map())
   const supabase = createClient()
-  const scrollRef = useRef<HTMLDivElement>(null)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   // Sync initial messages when they change
@@ -29,7 +28,6 @@ export function useRealtimeMessages(consultationId: string, initialMessages: Mes
     const channel = supabase
       .channel(`messages:${consultationId}`)
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
-        // payload: { userId: string, name: string, isTyping: boolean }
         if (payload.userId === profile?.id) return
 
         setTypingUsers(prev => {
@@ -53,34 +51,36 @@ export function useRealtimeMessages(consultationId: string, initialMessages: Mes
         async (payload) => {
           const rawMessage = payload.new as Message
           
-          // Fetch the full message including the joined sender profile
-          const { data: fullMessage } = await supabase
-            .from('messages')
-            .select('*, sender:profiles!messages_sender_id_fkey(full_name)')
-            .eq('id', rawMessage.id)
-            .single()
-
-          if (fullMessage) {
-            const msg = fullMessage as unknown as Message
-            setMessages((prev) => {
-              // Avoid duplicates
-              if (prev.some((m) => m.id === msg.id)) return prev
-              return [...prev, msg]
-            })
+          // Construct sender object manually using the consultation data
+          let senderName = 'Unknown'
+          if (rawMessage.sender_id === consultation.doctor_id) {
+            senderName = consultation.doctor?.full_name ?? 'Dokter'
+          } else if (rawMessage.sender_id === consultation.nurse_id) {
+            senderName = consultation.nurse?.full_name ?? 'Perawat'
           }
+
+          const msg: Message = {
+            ...rawMessage,
+            sender: { full_name: senderName } as Profile
+          }
+
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev
+            return [...prev, msg]
+          })
         }
       )
       .subscribe((status) => {
         setIsConnected(status === 'SUBSCRIBED')
       })
-      
+
     channelRef.current = channel
 
     return () => {
       supabase.removeChannel(channel)
       channelRef.current = null
     }
-  }, [consultationId, supabase, profile?.id])
+  }, [consultation, supabase, profile?.id])
 
   // Clear stale typing indicators after 3 seconds
   useEffect(() => {
@@ -111,12 +111,5 @@ export function useRealtimeMessages(consultationId: string, initialMessages: Mes
     })
   }, [profile])
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
-
-  return { messages, isConnected, scrollRef, typingUsers, sendTypingEvent }
+  return { messages, setMessages, isConnected, typingUsers, sendTypingEvent }
 }

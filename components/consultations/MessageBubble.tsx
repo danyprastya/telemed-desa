@@ -17,6 +17,21 @@ interface MessageBubbleProps {
  * @param isOwn - Whether this message was sent by the current user.
  */
 export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
+  const isSystem = message.content.startsWith('[SISTEM]')
+
+  if (isSystem) {
+    const cleanContent = message.content.replace('[SISTEM]', '').trim()
+    return (
+      <div className="flex justify-center my-4">
+        <div className="bg-surface border border-border-green px-4 py-2 rounded-lg max-w-[90%] text-center shadow-sm">
+          <p className="text-xs text-primary font-medium mb-1">Pemberitahuan Sistem</p>
+          <p className="text-xs text-text-secondary whitespace-pre-wrap break-words">{cleanContent}</p>
+          <p className="text-[10px] text-text-muted mt-2">{formatTime(message.created_at)}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}>
       <div

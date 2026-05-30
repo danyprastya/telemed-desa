@@ -23,7 +23,7 @@ export function TopNav() {
   const { profile, signOut } = useAuth()
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-white border-b border-border-green">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-card border-b border-border-green">
       {/* Left: Mobile menu + breadcrumb area */}
       <div className="flex items-center gap-3">
         <MobileSidebar />

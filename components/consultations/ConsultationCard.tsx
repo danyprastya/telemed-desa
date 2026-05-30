@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { formatDate, formatConsultationStatus } from '@/lib/utils/format.utils'
+import { formatDateTime, formatConsultationStatus } from '@/lib/utils/format.utils'
 import { Stethoscope } from 'lucide-react'
 import type { Consultation } from '@/types/app.types'
 
@@ -40,7 +40,7 @@ export function ConsultationCard({ consultation, href }: ConsultationCardProps) 
             </div>
             <div className="shrink-0 text-right">
               <StatusBadge status={consultation.status} />
-              <p className="text-xs text-text-muted mt-1">{formatDate(consultation.created_at)}</p>
+              <p className="text-xs text-text-muted mt-1">{formatDateTime(consultation.created_at)}</p>
             </div>
           </div>
         </CardContent>

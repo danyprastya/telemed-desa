@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Activity, MessageSquare, Plus, AlertTriangle, MapPin, ArrowLeft, ChevronRight } from 'lucide-react'
-import { formatDate, formatGender, calculateAge } from '@/lib/utils/format.utils'
+import { formatDate, formatDateTime, formatGender, calculateAge } from '@/lib/utils/format.utils'
 import { toast } from 'sonner'
 import type { Patient, VitalSign, Consultation } from '@/types/app.types'
 
@@ -190,7 +190,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     >
                       <div className="flex items-center justify-between pr-6">
                         <StatusBadge status={c.status} />
-                        <span className="text-xs text-text-secondary">{formatDate(c.created_at)}</span>
+                        <span className="text-xs text-text-secondary">{formatDateTime(c.created_at)}</span>
                       </div>
                       <div className="pr-6">
                         {c.doctor?.full_name && (

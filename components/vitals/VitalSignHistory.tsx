@@ -156,20 +156,20 @@ function VitalHistoryItem({ vital }: { vital: VitalSign }) {
         )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-        <div className="p-2 rounded-md bg-white border border-border-green">
+        <div className="p-2 rounded-md bg-card border border-border-green">
           <span className="text-text-secondary text-xs block">Suhu</span>
           <span className="font-semibold">{vital.temperature}°C</span>
         </div>
-        <div className="p-2 rounded-md bg-white border border-border-green">
+        <div className="p-2 rounded-md bg-card border border-border-green">
           <span className="text-text-secondary text-xs block">Nadi</span>
           <span className="font-semibold">{vital.heart_rate} bpm</span>
         </div>
-        <div className="p-2 rounded-md bg-white border border-border-green">
+        <div className="p-2 rounded-md bg-card border border-border-green">
           <span className="text-text-secondary text-xs block">SpO₂</span>
           <span className="font-semibold">{vital.spo2}%</span>
         </div>
         {vital.systolic_bp && (
-          <div className="p-2 rounded-md bg-white border border-border-green">
+          <div className="p-2 rounded-md bg-card border border-border-green">
             <span className="text-text-secondary text-xs block">TD</span>
             <span className="font-semibold">{vital.systolic_bp}/{vital.diastolic_bp}</span>
           </div>

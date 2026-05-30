@@ -92,7 +92,7 @@ export async function POST(
       body: `${profile.full_name}: ${parsed.data.content.substring(0, 100)}`,
       link: profile.role === 'nurse'
         ? `/doctor/consultations/${id}`
-        : `/nurse/patients`,
+        : `/nurse/consultations/${id}`,
     })
   }
 

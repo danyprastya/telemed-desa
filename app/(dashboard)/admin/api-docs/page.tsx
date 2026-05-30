@@ -23,7 +23,7 @@ export default function ApiDocsPage() {
         title="Dokumentasi API"
         description="Referensi lengkap semua endpoint REST API TeleMed Desa"
       />
-      <div className="rounded-xl border border-border-green overflow-hidden bg-white">
+      <div className="rounded-xl border border-border-green overflow-hidden bg-card">
         <SwaggerUI url="/docs/openapi.yaml" />
       </div>
     </RoleGuard>

@@ -12,7 +12,7 @@ import { useState, useEffect, useRef } from 'react'
  * On click: opens the NotificationDropdown.
  */
 export function NotificationBell() {
-  const { unreadCount } = useNotifications()
+  const { notifications, unreadCount, markAsRead, isLoading } = useNotifications()
   const [showDropdown, setShowDropdown] = useState(false)
   const [shake, setShake] = useState(false)
   const prevCount = useRef(unreadCount)
@@ -46,7 +46,12 @@ export function NotificationBell() {
       </Button>
 
       {showDropdown && (
-        <NotificationDropdown onClose={() => setShowDropdown(false)} />
+        <NotificationDropdown 
+          notifications={notifications}
+          markAsRead={markAsRead}
+          isLoading={isLoading}
+          onClose={() => setShowDropdown(false)} 
+        />
       )}
     </div>
   )
