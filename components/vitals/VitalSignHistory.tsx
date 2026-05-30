@@ -148,7 +148,7 @@ function VitalHistoryItem({ vital }: { vital: VitalSign }) {
       }`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-text-secondary">{formatDate(vital.recorded_at)}</span>
+        <span className="text-xs text-text-secondary">{formatDateTime(vital.recorded_at)}</span>
         {vital.is_flagged && (
           <Badge className="bg-critical-light text-critical text-xs gap-1">
             <AlertTriangle className="h-3 w-3" /> Ditandai

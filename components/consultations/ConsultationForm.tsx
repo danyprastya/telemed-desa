@@ -115,7 +115,7 @@ export function ConsultationForm({ patientId, onSuccess }: ConsultationFormProps
             <Label htmlFor="doctor_id">Dokter Tujuan <span className="text-critical">*</span></Label>
             <Select
               value={selectedDoctorId ?? ''}
-              onValueChange={(val) => setValue('doctor_id', val, { shouldValidate: true })}
+              onValueChange={(val) => setValue('doctor_id', val as string, { shouldValidate: true })}
               disabled={isSubmitting || loadingDoctors}
             >
               <SelectTrigger id="doctor_id" className={errors.doctor_id ? 'border-critical' : ''}>
@@ -138,7 +138,7 @@ export function ConsultationForm({ patientId, onSuccess }: ConsultationFormProps
             <Label htmlFor="vital_sign_id">Data Tanda Vital Terkait (opsional)</Label>
             <Select
               value={selectedVitalId ?? ''}
-              onValueChange={(val) => setValue('vital_sign_id', val || null)}
+              onValueChange={(val) => setValue('vital_sign_id', val as string || null)}
               disabled={isSubmitting || loadingVitals}
             >
               <SelectTrigger id="vital_sign_id">
@@ -161,10 +161,10 @@ export function ConsultationForm({ patientId, onSuccess }: ConsultationFormProps
                         {new Date(v.recorded_at).toLocaleString('id-ID')} {v.is_flagged ? '⚠️' : ''}
                       </div>
                       <div className="text-xs text-text-secondary leading-tight text-wrap">
-                        TD: {v.blood_pressure || '-'} | Nadi: {v.heart_rate || '-'} bpm | RR: {v.respiratory_rate || '-'} x/m
+                        TD: {v.systolic_bp ? `${v.systolic_bp}/${v.diastolic_bp}` : '-'} | Nadi: {v.heart_rate || '-'} bpm
                       </div>
                       <div className="text-xs text-text-secondary leading-tight text-wrap">
-                        Suhu: {v.temperature || '-'}°C | SpO₂: {v.spo2 || '-'}% | BB: {v.weight || '-'} kg
+                        Suhu: {v.temperature || '-'}°C | SpO₂: {v.spo2 || '-'}%
                       </div>
                     </div>
                   </SelectItem>

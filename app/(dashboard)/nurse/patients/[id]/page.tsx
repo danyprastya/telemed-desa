@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Activity, MessageSquare, Plus, AlertTriangle, MapPin, ArrowLeft } from 'lucide-react'
+import { Activity, MessageSquare, Plus, AlertTriangle, MapPin, ArrowLeft, ChevronRight } from 'lucide-react'
 import { formatDate, formatGender, calculateAge } from '@/lib/utils/format.utils'
 import { toast } from 'sonner'
 import type { Patient, VitalSign, Consultation } from '@/types/app.types'
@@ -56,19 +56,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     fetchData()
   }, [id])
 
-  /** Quick-create consultation from the overview tab */
-  const handleCreateConsultation = async () => {
-    try {
-      const res = await fetch(`/api/patients/${id}/consultations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vital_sign_id: vitals[0]?.id ?? null }),
-      })
-      const result = await res.json()
-      if (result.error) toast.error(result.error)
-      else { toast.success('Konsultasi berhasil dibuat'); router.refresh() }
-    } catch { toast.error('Gagal membuat konsultasi') }
-  }
+
 
   if (loading) return <RoleGuard allowedRoles={['nurse']}><LoadingSpinner /></RoleGuard>
 
@@ -163,10 +151,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               <Activity className="mr-2 h-4 w-4" /> Input Tanda Vital
             </Button>
             <Button variant="outline" onClick={() => router.push(`/nurse/patients/${id}/consultation/new`)}>
-              <MessageSquare className="mr-2 h-4 w-4" /> Buat Konsultasi (Form)
-            </Button>
-            <Button variant="outline" onClick={handleCreateConsultation}>
-              <Plus className="mr-2 h-4 w-4" /> Konsultasi Cepat
+              <MessageSquare className="mr-2 h-4 w-4" /> Buat Konsultasi Baru
             </Button>
           </div>
         </TabsContent>
@@ -198,20 +183,29 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               ) : (
                 <div className="space-y-3">
                   {consultations.map((c) => (
-                    <div key={c.id} className="p-3 rounded-lg border border-border-green bg-surface">
-                      <div className="flex items-center justify-between">
+                    <div 
+                      key={c.id} 
+                      onClick={() => router.push(`/nurse/consultations/${c.id}`)}
+                      className="p-3 rounded-lg border border-border-green bg-surface cursor-pointer hover:border-primary transition-colors group relative"
+                    >
+                      <div className="flex items-center justify-between pr-6">
                         <StatusBadge status={c.status} />
                         <span className="text-xs text-text-secondary">{formatDate(c.created_at)}</span>
                       </div>
-                      {c.doctor?.full_name && (
-                        <p className="text-xs text-text-secondary mt-1">Dokter: {c.doctor.full_name}</p>
-                      )}
-                      {c.closing_notes && (
-                        <p className="text-xs text-text-muted mt-1">{c.closing_notes}</p>
-                      )}
-                      {c.referral_needed && (
-                        <Badge className="mt-1 bg-warning-light text-warning text-xs">Rujukan</Badge>
-                      )}
+                      <div className="pr-6">
+                        {c.doctor?.full_name && (
+                          <p className="text-xs text-text-secondary mt-1">Dokter: {c.doctor.full_name}</p>
+                        )}
+                        {c.closing_notes && (
+                          <p className="text-xs text-text-muted mt-1">{c.closing_notes}</p>
+                        )}
+                        {c.referral_needed && (
+                          <Badge className="mt-1 bg-warning-light text-warning text-xs">Rujukan</Badge>
+                        )}
+                      </div>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <ChevronRight className="h-4 w-4 text-text-muted group-hover:text-primary transition-colors" />
+                      </div>
                     </div>
                   ))}
                 </div>

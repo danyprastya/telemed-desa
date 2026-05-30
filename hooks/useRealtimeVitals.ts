@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import type { VitalSign } from '@/types/app.types'
 
 /**
@@ -14,8 +15,17 @@ import type { VitalSign } from '@/types/app.types'
 export function useRealtimeVitals(patientId: string, initialVitals: VitalSign[]) {
   const [vitals, setVitals] = useState<VitalSign[]>(initialVitals)
   const [isLive, setIsLive] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [reconnectCounter, setReconnectCounter] = useState(0)
+  const manualReconnectRef = useRef(false)
   const supabase = createClient()
+
+  const reconnect = () => {
+    setIsConnecting(true)
+    manualReconnectRef.current = true
+    setReconnectCounter((c) => c + 1)
+  }
 
   // Sync initial vitals
   useEffect(() => {
@@ -27,8 +37,9 @@ export function useRealtimeVitals(patientId: string, initialVitals: VitalSign[])
 
   // Subscribe to new vital sign inserts
   useEffect(() => {
+    setIsConnecting(true)
     const channel = supabase
-      .channel(`vitals:${patientId}`)
+      .channel(`vitals:${patientId}:${reconnectCounter}`)
       .on(
         'postgres_changes',
         {
@@ -47,14 +58,25 @@ export function useRealtimeVitals(patientId: string, initialVitals: VitalSign[])
           setLastUpdated(new Date())
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         setIsLive(status === 'SUBSCRIBED')
+        setIsConnecting(false)
+        
+        if (manualReconnectRef.current) {
+          if (status === 'SUBSCRIBED') {
+            toast.success('Koneksi monitoring berhasil dipulihkan')
+            manualReconnectRef.current = false
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            toast.error('Gagal memulihkan koneksi monitoring')
+            manualReconnectRef.current = false
+          }
+        }
       })
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [patientId, supabase])
+  }, [patientId, supabase, reconnectCounter])
 
-  return { vitals, isLive, lastUpdated }
+  return { vitals, isLive, isConnecting, lastUpdated, reconnect }
 }

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { getVitalStatus, type VitalType } from '@/lib/utils/vitals.utils'
 import { formatDateTime } from '@/lib/utils/format.utils'
-import { Activity, Wifi, WifiOff, AlertTriangle } from 'lucide-react'
+import { Activity, Wifi, WifiOff, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react'
 import type { VitalSign } from '@/types/app.types'
 
 interface VitalSignMonitorProps {
@@ -24,24 +24,32 @@ interface VitalSignMonitorProps {
  * @param initialVitals - Vital signs fetched on mount (newest first).
  */
 export function VitalSignMonitor({ patientId, initialVitals }: VitalSignMonitorProps) {
-  const { vitals, isLive, lastUpdated } = useRealtimeVitals(patientId, initialVitals)
+  const { vitals, isLive, isConnecting, lastUpdated, reconnect } = useRealtimeVitals(patientId, initialVitals)
   const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Tick "last updated" every second
+  // Calculate absolute time difference every second
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setSecondsSinceUpdate((prev) => prev + 1)
-    }, 1000)
+    const updateDiff = () => {
+      const now = new Date().getTime()
+      const diff = Math.floor((now - lastUpdated.getTime()) / 1000)
+      setSecondsSinceUpdate(diff >= 0 ? diff : 0)
+    }
+    updateDiff() // call immediately
+    
+    intervalRef.current = setInterval(updateDiff, 1000)
+    
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [])
-
-  // Reset counter when lastUpdated changes
-  useEffect(() => {
-    setSecondsSinceUpdate(0)
   }, [lastUpdated])
+
+  const formatTimeAgo = (seconds: number) => {
+    if (seconds < 60) return `${seconds} detik`
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} menit`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} jam ${Math.floor((seconds % 3600) / 60)} menit`
+    return `${Math.floor(seconds / 86400)} hari`
+  }
 
   if (vitals.length === 0) {
     return (
@@ -94,18 +102,28 @@ export function VitalSignMonitor({ patientId, initialVitals }: VitalSignMonitorP
             <Badge className="bg-success-light text-success gap-1 animate-pulse-live">
               <Wifi className="h-3 w-3" /> LIVE
             </Badge>
-          ) : (
-            <Badge className="bg-critical-light text-critical gap-1">
-              <WifiOff className="h-3 w-3" /> TERPUTUS
+          ) : isConnecting ? (
+            <Badge className="bg-warning-light text-warning gap-1">
+              <Loader2 className="h-3 w-3 animate-spin mr-0.5" /> MENYAMBUNGKAN
             </Badge>
+          ) : (
+            <button 
+              onClick={reconnect}
+              className="flex items-center hover:opacity-80 transition-opacity focus:outline-none"
+              title="Klik untuk menyambungkan kembali"
+            >
+              <Badge className="bg-critical-light text-critical gap-1 cursor-pointer">
+                <RefreshCw className="h-3 w-3 mr-0.5" /> RECONNECT
+              </Badge>
+            </button>
           )}
           <span className="text-xs text-text-muted">
-            Terakhir diperbarui: {secondsSinceUpdate} detik lalu
+            Terakhir diperbarui: {formatTimeAgo(secondsSinceUpdate)} lalu
           </span>
         </div>
         <div className="flex gap-2 flex-wrap">
           {latestStatuses.map((s) => (
-            <VitalSignBadge key={s.type} status={s.status} />
+            <VitalSignBadge key={s.type} status={s.status} label={s.label} />
           ))}
         </div>
       </div>

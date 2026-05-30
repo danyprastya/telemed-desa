@@ -45,10 +45,11 @@ export function useRealtimeMessages(consultationId: string, initialMessages: Mes
             .single()
 
           if (fullMessage) {
+            const msg = fullMessage as unknown as Message
             setMessages((prev) => {
               // Avoid duplicates
-              if (prev.some((m) => m.id === fullMessage.id)) return prev
-              return [...prev, fullMessage as Message]
+              if (prev.some((m) => m.id === msg.id)) return prev
+              return [...prev, msg]
             })
           }
         }

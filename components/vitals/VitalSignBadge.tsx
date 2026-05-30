@@ -2,6 +2,7 @@ import type { VitalStatus } from '@/lib/utils/vitals.utils'
 
 interface VitalSignBadgeProps {
   status: VitalStatus
+  label?: string
   className?: string
 }
 
@@ -23,12 +24,13 @@ const STATUS_LABELS: Record<VitalStatus, string> = {
  * @param status - The vital sign clinical status.
  * @param className - Optional additional classes.
  */
-export function VitalSignBadge({ status, className = '' }: VitalSignBadgeProps) {
+export function VitalSignBadge({ status, label, className = '' }: VitalSignBadgeProps) {
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[status]} ${className}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${status === 'normal' ? 'bg-success' : status === 'warning' ? 'bg-warning' : 'bg-critical'}`} />
+      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 shrink-0 ${status === 'normal' ? 'bg-success' : status === 'warning' ? 'bg-warning' : 'bg-critical'}`} />
+      {label ? <span className="mr-1">{label}:</span> : null}
       {STATUS_LABELS[status]}
     </span>
   )
