@@ -3,7 +3,6 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { RoleGuard } from '@/components/layout/RoleGuard'
 import { VitalSignHistory } from '@/components/vitals/VitalSignHistory'
 import { VitalSignMonitor } from '@/components/vitals/VitalSignMonitor'
@@ -12,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Activity, MessageSquare, Plus, AlertTriangle, MapPin, ArrowLeft, ChevronRight } from 'lucide-react'
 import { formatDate, formatGender, calculateAge } from '@/lib/utils/format.utils'
 import { toast } from 'sonner'
@@ -58,7 +58,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
 
 
 
-  if (loading) return <RoleGuard allowedRoles={['nurse']}><LoadingSpinner /></RoleGuard>
+  if (loading) return <RoleGuard allowedRoles={['nurse']}><PatientDetailSkeleton /></RoleGuard>
 
   if (error || !patient) {
     return (
@@ -215,5 +215,71 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         </TabsContent>
       </Tabs>
     </RoleGuard>
+  )
+}
+
+function PatientDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Back button skeleton */}
+      <Skeleton className="h-10 w-48 mb-4" />
+      
+      {/* Page Header skeleton */}
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+
+      {/* Tabs list skeleton */}
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-10 w-24" />
+      </div>
+
+      {/* Overview tab content skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-4">
+        {/* Patient Data Card */}
+        <Card className="border-border-green">
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+            <div className="pt-2 border-t border-border-green mt-4">
+              <Skeleton className="h-4 w-full max-w-sm" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Latest Vitals Card */}
+        <Card className="border-border-green">
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-10 w-48" />
+      </div>
+    </div>
   )
 }

@@ -30,10 +30,11 @@ interface ChatWindowProps {
  */
 export function ChatWindow({ consultation, initialMessages, onConsultationUpdated }: ChatWindowProps) {
   const { profile } = useAuth()
-  const { messages, isConnected, scrollRef } = useRealtimeMessages(consultation.id, initialMessages)
+  const { messages, isConnected, scrollRef, typingUsers, sendTypingEvent } = useRealtimeMessages(consultation.id, initialMessages, profile)
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [showCloseDialog, setShowCloseDialog] = useState(false)
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -80,6 +81,8 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
         toast.error(result.error)
       } else {
         setNewMessage('')
+        sendTypingEvent(false)
+        if (typingTimeout) clearTimeout(typingTimeout)
         inputRef.current?.focus()
       }
     } catch {
@@ -95,6 +98,24 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
       handleSend()
     }
   }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value)
+    sendTypingEvent(true)
+    
+    if (typingTimeout) clearTimeout(typingTimeout)
+    const timeout = setTimeout(() => {
+      sendTypingEvent(false)
+    }, 2000)
+    setTypingTimeout(timeout)
+  }
+
+  // Cleanup timeout
+  useEffect(() => {
+    return () => {
+      if (typingTimeout) clearTimeout(typingTimeout)
+    }
+  }, [typingTimeout])
 
   return (
     <div className="flex flex-col h-[600px] rounded-xl border border-border-green bg-white overflow-hidden">
@@ -152,13 +173,20 @@ export function ChatWindow({ consultation, initialMessages, onConsultationUpdate
         </div>
       </ScrollArea>
 
+      {/* Typing indicator */}
+      {typingUsers.size > 0 && !isClosed && (
+        <div className="px-4 py-2 text-xs text-text-muted italic bg-surface/50 border-t border-border-green">
+          {Array.from(typingUsers.values()).map(u => u.name).join(', ')} sedang mengetik...
+        </div>
+      )}
+
       {/* Input area */}
       {!isClosed && (
         <div className="flex items-center gap-2 px-4 py-3 border-t border-border-green bg-surface shrink-0 mt-auto">
           <Input
             ref={inputRef}
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Ketik pesan..."
             disabled={isSending}

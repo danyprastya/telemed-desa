@@ -33,6 +33,8 @@ export function ConsultationForm({ patientId, onSuccess }: ConsultationFormProps
   const [doctors, setDoctors] = useState<{id: string, full_name: string}[]>([])
   const [loadingDoctors, setLoadingDoctors] = useState(true)
 
+  const STORAGE_KEY = `consultation_draft_${patientId}`
+
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<CreateConsultationInput>({
     resolver: zodResolver(createConsultationSchema),
     defaultValues: {
@@ -42,7 +44,31 @@ export function ConsultationForm({ patientId, onSuccess }: ConsultationFormProps
     },
   })
 
+  // Auto-save: load draft on mount
+  useEffect(() => {
+    const draft = localStorage.getItem(STORAGE_KEY)
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft)
+        if (parsed.doctor_id) setValue('doctor_id', parsed.doctor_id)
+        if (parsed.vital_sign_id) setValue('vital_sign_id', parsed.vital_sign_id)
+        if (parsed.initial_message) setValue('initial_message', parsed.initial_message)
+      } catch (e) {
+        console.error('Failed to parse draft', e)
+      }
+    }
+  }, [STORAGE_KEY, setValue])
+
   const selectedVitalId = watch('vital_sign_id')
+  const currentValues = watch()
+
+  // Auto-save: save draft on change (debounced)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentValues))
+    }, 1000)
+    return () => clearTimeout(timeoutId)
+  }, [currentValues, STORAGE_KEY])
 
   useEffect(() => {
     const fetchVitals = async () => {
@@ -91,6 +117,8 @@ export function ConsultationForm({ patientId, onSuccess }: ConsultationFormProps
         toast.error(result.error)
       } else {
         toast.success('Konsultasi berhasil dibuat')
+        localStorage.removeItem(STORAGE_KEY)
+        
         if (onSuccess) {
           onSuccess(result.data?.id)
         } else {

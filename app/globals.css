@@ -48,23 +48,23 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   /* TeleMed Custom Colors */
-  --color-surface: #F0FDF4;
-  --color-border-green: #D1FAE5;
-  --color-primary-light: #DCFCE7;
-  --color-primary-text: #14532D;
-  --color-text-primary: #111827;
-  --color-text-secondary: #6B7280;
-  --color-text-muted: #9CA3AF;
-  --color-critical: #EF4444;
-  --color-critical-light: #FEF2F2;
-  --color-warning: #F59E0B;
-  --color-warning-light: #FFFBEB;
-  --color-success: #10B981;
-  --color-success-light: #ECFDF5;
-  --color-info: #3B82F6;
-  --color-info-light: #EFF6FF;
-  --color-sidebar-bg: #F9FAFB;
-  --color-sidebar-active: #DCFCE7;
+  --color-surface: var(--surface);
+  --color-border-green: var(--border-green);
+  --color-primary-light: var(--primary-light);
+  --color-primary-text: var(--primary-text);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-critical: var(--critical);
+  --color-critical-light: var(--critical-light);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-info: var(--info);
+  --color-info-light: var(--info-light);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-active: var(--sidebar-active);
 }
 
 :root {
@@ -100,6 +100,79 @@
   --sidebar-accent-foreground: #14532D;
   --sidebar-border: #D1FAE5;
   --sidebar-ring: #16A34A;
+
+  /* TeleMed Custom Colors */
+  --surface: #F0FDF4;
+  --border-green: #D1FAE5;
+  --primary-light: #DCFCE7;
+  --primary-text: #14532D;
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --critical: #EF4444;
+  --critical-light: #FEF2F2;
+  --warning: #F59E0B;
+  --warning-light: #FFFBEB;
+  --success: #10B981;
+  --success-light: #ECFDF5;
+  --info: #3B82F6;
+  --info-light: #EFF6FF;
+  --sidebar-bg: #F9FAFB;
+  --sidebar-active: #DCFCE7;
+}
+
+.dark {
+  --background: #111827;
+  --foreground: #F9FAFB;
+  --card: #1F2937;
+  --card-foreground: #F9FAFB;
+  --popover: #1F2937;
+  --popover-foreground: #F9FAFB;
+  --primary: #22C55E;
+  --primary-foreground: #111827;
+  --secondary: #374151;
+  --secondary-foreground: #F9FAFB;
+  --muted: #374151;
+  --muted-foreground: #9CA3AF;
+  --accent: #374151;
+  --accent-foreground: #F9FAFB;
+  --destructive: #F87171;
+  --border: #374151;
+  --input: #374151;
+  --ring: #22C55E;
+  --chart-1: #22C55E;
+  --chart-2: #34D399;
+  --chart-3: #60A5FA;
+  --chart-4: #FBBF24;
+  --chart-5: #F87171;
+  
+  --sidebar: #111827;
+  --sidebar-foreground: #F9FAFB;
+  --sidebar-primary: #22C55E;
+  --sidebar-primary-foreground: #111827;
+  --sidebar-accent: #374151;
+  --sidebar-accent-foreground: #F9FAFB;
+  --sidebar-border: #374151;
+  --sidebar-ring: #22C55E;
+
+  /* TeleMed Custom Colors */
+  --surface: #1F2937;
+  --border-green: #374151;
+  --primary-light: #064E3B;
+  --primary-text: #6EE7B7;
+  --text-primary: #F9FAFB;
+  --text-secondary: #D1D5DB;
+  --text-muted: #9CA3AF;
+  --critical: #F87171;
+  --critical-light: #7F1D1D;
+  --warning: #FBBF24;
+  --warning-light: #78350F;
+  --success: #34D399;
+  --success-light: #064E3B;
+  --info: #60A5FA;
+  --info-light: #1E3A8A;
+  --sidebar-bg: #111827;
+  --sidebar-active: #1F2937;
 }
 
 @layer base {

@@ -5,6 +5,7 @@ import { useRealtimeVitals } from '@/hooks/useRealtimeVitals'
 import { VitalSignChart } from '@/components/vitals/VitalSignChart'
 import { VitalSignBadge } from '@/components/vitals/VitalSignBadge'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { getVitalStatus, type VitalType } from '@/lib/utils/vitals.utils'
 import { formatDateTime } from '@/lib/utils/format.utils'
@@ -95,6 +96,25 @@ export function VitalSignMonitor({ patientId, initialVitals }: VitalSignMonitorP
 
   return (
     <div className="space-y-4">
+      {/* Network Banner */}
+      {!isLive && (
+        <Alert className={`border ${isConnecting ? 'border-warning/50 bg-warning-light/30' : 'border-critical/50 bg-critical-light/30'}`}>
+          {isConnecting ? <Loader2 className="h-4 w-4 animate-spin text-warning" /> : <WifiOff className="h-4 w-4 text-critical" />}
+          <AlertDescription className={`flex items-center justify-between ${isConnecting ? 'text-warning-dark' : 'text-critical'}`}>
+            <span>
+              {isConnecting 
+                ? 'Menyambungkan kembali ke server realtime...' 
+                : 'Koneksi terputus. Menunggu sambungan untuk data terbaru.'}
+            </span>
+            {!isConnecting && (
+              <Button size="sm" variant="outline" className="h-7 text-xs border-critical/30 text-critical hover:bg-critical/10" onClick={reconnect}>
+                <RefreshCw className="h-3 w-3 mr-1.5" /> Sambung Ulang
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Status bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-border-green bg-surface">
         <div className="flex items-center gap-3">
@@ -107,15 +127,9 @@ export function VitalSignMonitor({ patientId, initialVitals }: VitalSignMonitorP
               <Loader2 className="h-3 w-3 animate-spin mr-0.5" /> MENYAMBUNGKAN
             </Badge>
           ) : (
-            <button 
-              onClick={reconnect}
-              className="flex items-center hover:opacity-80 transition-opacity focus:outline-none"
-              title="Klik untuk menyambungkan kembali"
-            >
-              <Badge className="bg-critical-light text-critical gap-1 cursor-pointer">
-                <RefreshCw className="h-3 w-3 mr-0.5" /> RECONNECT
-              </Badge>
-            </button>
+            <Badge className="bg-critical-light text-critical gap-1">
+              <WifiOff className="h-3 w-3 mr-0.5" /> TERPUTUS
+            </Badge>
           )}
           <span className="text-xs text-text-muted">
             Terakhir diperbarui: {formatTimeAgo(secondsSinceUpdate)} lalu

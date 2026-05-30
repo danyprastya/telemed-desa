@@ -3,6 +3,7 @@
 import { useAuth } from '@/hooks/useAuth'
 import { MobileSidebar } from './MobileSidebar'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,7 @@ export function TopNav() {
 
       {/* Right: Notifications + User menu */}
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         <NotificationBell />
 
         <DropdownMenu>
