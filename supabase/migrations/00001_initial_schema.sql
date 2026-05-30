@@ -6,15 +6,31 @@
 -- ============================================================
 
 -- 1. CUSTOM ENUMS
-CREATE TYPE public.user_role AS ENUM ('admin', 'doctor', 'nurse');
-CREATE TYPE public.patient_gender AS ENUM ('male', 'female');
-CREATE TYPE public.consultation_status AS ENUM ('open', 'in_progress', 'closed');
-CREATE TYPE public.notification_type AS ENUM (
+DO $ BEGIN
+  CREATE TYPE public.user_role AS ENUM ('admin', 'doctor', 'nurse');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $;
+DO $ BEGIN
+  CREATE TYPE public.patient_gender AS ENUM ('male', 'female');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $;
+DO $ BEGIN
+  CREATE TYPE public.consultation_status AS ENUM ('open', 'in_progress', 'closed');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $;
+DO $ BEGIN
+  CREATE TYPE public.notification_type AS ENUM (
   'new_consultation', 'new_message', 'consultation_claimed', 'consultation_closed'
 );
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $;
 
 -- 2. PUSKESMAS TABLE
-CREATE TABLE public.puskesmas (
+CREATE TABLE IF NOT EXISTS public.puskesmas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   location TEXT NOT NULL,
@@ -22,7 +38,7 @@ CREATE TABLE public.puskesmas (
 );
 
 -- 3. HOSPITALS TABLE
-CREATE TABLE public.hospitals (
+CREATE TABLE IF NOT EXISTS public.hospitals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   location TEXT NOT NULL,
@@ -30,7 +46,7 @@ CREATE TABLE public.hospitals (
 );
 
 -- 4. PROFILES TABLE (extends auth.users)
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
   role public.user_role NOT NULL DEFAULT 'nurse',
@@ -41,7 +57,7 @@ CREATE TABLE public.profiles (
 );
 
 -- 5. PATIENTS TABLE
-CREATE TABLE public.patients (
+CREATE TABLE IF NOT EXISTS public.patients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT NOT NULL,
   nik TEXT NOT NULL UNIQUE,
@@ -57,7 +73,7 @@ CREATE TABLE public.patients (
 );
 
 -- 6. VITAL SIGNS TABLE
-CREATE TABLE public.vital_signs (
+CREATE TABLE IF NOT EXISTS public.vital_signs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
   temperature NUMERIC(4,1) NOT NULL,
@@ -72,7 +88,7 @@ CREATE TABLE public.vital_signs (
 );
 
 -- 7. CONSULTATIONS TABLE
-CREATE TABLE public.consultations (
+CREATE TABLE IF NOT EXISTS public.consultations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id UUID NOT NULL REFERENCES public.patients(id),
   nurse_id UUID NOT NULL REFERENCES public.profiles(id),
@@ -86,7 +102,7 @@ CREATE TABLE public.consultations (
 );
 
 -- 8. MESSAGES TABLE
-CREATE TABLE public.messages (
+CREATE TABLE IF NOT EXISTS public.messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   consultation_id UUID NOT NULL REFERENCES public.consultations(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES public.profiles(id),
@@ -95,7 +111,7 @@ CREATE TABLE public.messages (
 );
 
 -- 9. NOTIFICATIONS TABLE
-CREATE TABLE public.notifications (
+CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   type public.notification_type NOT NULL,
@@ -107,7 +123,7 @@ CREATE TABLE public.notifications (
 );
 
 -- 10. AUDIT LOGS TABLE
-CREATE TABLE public.audit_logs (
+CREATE TABLE IF NOT EXISTS public.audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   action TEXT NOT NULL,
@@ -121,15 +137,15 @@ CREATE TABLE public.audit_logs (
 -- ============================================================
 -- INDEXES
 -- ============================================================
-CREATE INDEX idx_patients_puskesmas ON public.patients(puskesmas_id) WHERE NOT is_deleted;
-CREATE INDEX idx_patients_nik ON public.patients(nik);
-CREATE INDEX idx_vital_signs_patient ON public.vital_signs(patient_id, recorded_at DESC);
-CREATE INDEX idx_consultations_status ON public.consultations(status);
-CREATE INDEX idx_consultations_nurse ON public.consultations(nurse_id);
-CREATE INDEX idx_consultations_doctor ON public.consultations(doctor_id);
-CREATE INDEX idx_messages_consultation ON public.messages(consultation_id, created_at ASC);
-CREATE INDEX idx_notifications_user ON public.notifications(user_id, is_read, created_at DESC);
-CREATE INDEX idx_audit_logs_user ON public.audit_logs(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_patients_puskesmas ON public.patients(puskesmas_id) WHERE NOT is_deleted;
+CREATE INDEX IF NOT EXISTS idx_patients_nik ON public.patients(nik);
+CREATE INDEX IF NOT EXISTS idx_vital_signs_patient ON public.vital_signs(patient_id, recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_consultations_status ON public.consultations(status);
+CREATE INDEX IF NOT EXISTS idx_consultations_nurse ON public.consultations(nurse_id);
+CREATE INDEX IF NOT EXISTS idx_consultations_doctor ON public.consultations(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_messages_consultation ON public.messages(consultation_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON public.audit_logs(user_id, created_at DESC);
 
 -- ============================================================
 -- AUTO-UPDATE updated_at TRIGGER
@@ -142,6 +158,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_patients_updated_at ON public.patients;
 CREATE TRIGGER set_patients_updated_at
   BEFORE UPDATE ON public.patients
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
@@ -162,46 +179,57 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- PUSKESMAS: all authenticated users can read
+DROP POLICY IF EXISTS "Puskesmas: read for authenticated" ON public.puskesmas;
 CREATE POLICY "Puskesmas: read for authenticated" ON public.puskesmas
   FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Puskesmas: admin insert" ON public.puskesmas;
 CREATE POLICY "Puskesmas: admin insert" ON public.puskesmas
   FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND is_active)
   );
+DROP POLICY IF EXISTS "Puskesmas: admin update" ON public.puskesmas;
 CREATE POLICY "Puskesmas: admin update" ON public.puskesmas
   FOR UPDATE USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND is_active)
   );
+DROP POLICY IF EXISTS "Puskesmas: admin delete" ON public.puskesmas;
 CREATE POLICY "Puskesmas: admin delete" ON public.puskesmas
   FOR DELETE USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND is_active)
   );
 
 -- HOSPITALS: all authenticated can read
+DROP POLICY IF EXISTS "Hospitals: read for authenticated" ON public.hospitals;
 CREATE POLICY "Hospitals: read for authenticated" ON public.hospitals
   FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Hospitals: admin insert" ON public.hospitals;
 CREATE POLICY "Hospitals: admin insert" ON public.hospitals
   FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND is_active)
   );
+DROP POLICY IF EXISTS "Hospitals: admin update" ON public.hospitals;
 CREATE POLICY "Hospitals: admin update" ON public.hospitals
   FOR UPDATE USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND is_active)
   );
+DROP POLICY IF EXISTS "Hospitals: admin delete" ON public.hospitals;
 CREATE POLICY "Hospitals: admin delete" ON public.hospitals
   FOR DELETE USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND is_active)
   );
 
 -- PROFILES: users can read all profiles, admin can update
+DROP POLICY IF EXISTS "Profiles: read for authenticated" ON public.profiles;
 CREATE POLICY "Profiles: read for authenticated" ON public.profiles
   FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Profiles: admin update" ON public.profiles;
 CREATE POLICY "Profiles: admin update" ON public.profiles
   FOR UPDATE USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND is_active)
   );
 
 -- PATIENTS: nurses see own puskesmas, doctors see all, admin sees all
+DROP POLICY IF EXISTS "Patients: nurse read own puskesmas" ON public.patients;
 CREATE POLICY "Patients: nurse read own puskesmas" ON public.patients
   FOR SELECT USING (
     EXISTS (
@@ -215,6 +243,7 @@ CREATE POLICY "Patients: nurse read own puskesmas" ON public.patients
       )
     )
   );
+DROP POLICY IF EXISTS "Patients: nurse insert" ON public.patients;
 CREATE POLICY "Patients: nurse insert" ON public.patients
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -223,6 +252,7 @@ CREATE POLICY "Patients: nurse insert" ON public.patients
       AND p.puskesmas_id = patients.puskesmas_id
     )
   );
+DROP POLICY IF EXISTS "Patients: nurse/admin update" ON public.patients;
 CREATE POLICY "Patients: nurse/admin update" ON public.patients
   FOR UPDATE USING (
     EXISTS (
@@ -233,6 +263,7 @@ CREATE POLICY "Patients: nurse/admin update" ON public.patients
   );
 
 -- VITAL SIGNS: same as patients + nurse can insert
+DROP POLICY IF EXISTS "Vitals: read for participants" ON public.vital_signs;
 CREATE POLICY "Vitals: read for participants" ON public.vital_signs
   FOR SELECT USING (
     EXISTS (
@@ -246,6 +277,7 @@ CREATE POLICY "Vitals: read for participants" ON public.vital_signs
       )
     )
   );
+DROP POLICY IF EXISTS "Vitals: nurse insert" ON public.vital_signs;
 CREATE POLICY "Vitals: nurse insert" ON public.vital_signs
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -254,6 +286,7 @@ CREATE POLICY "Vitals: nurse insert" ON public.vital_signs
   );
 
 -- CONSULTATIONS: nurse sees own, doctor sees all, admin sees all
+DROP POLICY IF EXISTS "Consultations: read for authenticated" ON public.consultations;
 CREATE POLICY "Consultations: read for authenticated" ON public.consultations
   FOR SELECT USING (
     EXISTS (
@@ -265,12 +298,14 @@ CREATE POLICY "Consultations: read for authenticated" ON public.consultations
       )
     )
   );
+DROP POLICY IF EXISTS "Consultations: nurse insert" ON public.consultations;
 CREATE POLICY "Consultations: nurse insert" ON public.consultations
   FOR INSERT WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'nurse' AND is_active
     )
   );
+DROP POLICY IF EXISTS "Consultations: doctor/admin update" ON public.consultations;
 CREATE POLICY "Consultations: doctor/admin update" ON public.consultations
   FOR UPDATE USING (
     EXISTS (
@@ -281,6 +316,7 @@ CREATE POLICY "Consultations: doctor/admin update" ON public.consultations
   );
 
 -- MESSAGES: only consultation participants
+DROP POLICY IF EXISTS "Messages: read for participants" ON public.messages;
 CREATE POLICY "Messages: read for participants" ON public.messages
   FOR SELECT USING (
     EXISTS (
@@ -290,6 +326,7 @@ CREATE POLICY "Messages: read for participants" ON public.messages
     )
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
+DROP POLICY IF EXISTS "Messages: participant insert" ON public.messages;
 CREATE POLICY "Messages: participant insert" ON public.messages
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -301,12 +338,15 @@ CREATE POLICY "Messages: participant insert" ON public.messages
   );
 
 -- NOTIFICATIONS: users can only read/update their own
+DROP POLICY IF EXISTS "Notifications: read own" ON public.notifications;
 CREATE POLICY "Notifications: read own" ON public.notifications
   FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Notifications: update own" ON public.notifications;
 CREATE POLICY "Notifications: update own" ON public.notifications
   FOR UPDATE USING (user_id = auth.uid());
 
 -- AUDIT LOGS: admin only
+DROP POLICY IF EXISTS "Audit: admin read" ON public.audit_logs;
 CREATE POLICY "Audit: admin read" ON public.audit_logs
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND is_active)
@@ -316,7 +356,27 @@ CREATE POLICY "Audit: admin read" ON public.audit_logs
 -- REALTIME PUBLICATIONS
 -- ============================================================
 -- Enable Realtime for messages, vital_signs, notifications, and consultations
-ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.vital_signs;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.consultations;
+DO $ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_object THEN null;
+END $;
+DO $ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.vital_signs;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_object THEN null;
+END $;
+DO $ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_object THEN null;
+END $;
+DO $ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.consultations;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_object THEN null;
+END $;
