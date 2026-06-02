@@ -82,10 +82,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, fetchProfile])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setProfile(null)
-    window.location.href = '/login'
+    try {
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.error('Logout error:', e)
+    } finally {
+      // Force clear all local storage and session storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear()
+        sessionStorage.clear()
+        
+        // Force clear all cookies to prevent middleware from reusing a stale session
+        const cookies = document.cookie.split(';')
+        for (const cookie of cookies) {
+          const eqPos = cookie.indexOf('=')
+          const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie
+          document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'
+        }
+      }
+
+      setUser(null)
+      setProfile(null)
+      window.location.href = '/login'
+    }
   }
 
   return (

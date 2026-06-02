@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuGroup,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -42,14 +43,16 @@ export function TopNav() {
             <span className="sr-only">Menu pengguna</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span className="font-medium">{profile?.full_name ?? 'User'}</span>
-                <span className="text-xs text-text-secondary capitalize">{profile?.role}</span>
-              </div>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span className="font-medium">{profile?.full_name ?? 'User'}</span>
+                  <span className="text-xs text-text-secondary capitalize">{profile?.role}</span>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={signOut} className="text-critical cursor-pointer">
+            <DropdownMenuItem render={<div onClick={() => signOut()} />} className="text-critical cursor-pointer w-full text-left">
               <LogOut className="mr-2 h-4 w-4" />
               Keluar
             </DropdownMenuItem>
